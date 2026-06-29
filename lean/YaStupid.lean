@@ -74,7 +74,7 @@ theorem gnat_dvd_natAbs {cfg : Config} {f : FalseSum} (hf : f ∈ cfg) :
 theorem gz_dvd_delta {cfg : Config} {f : FalseSum} (hf : f ∈ cfg) : gz cfg ∣ f.delta := by
   have h : (gnat cfg : Int) ∣ (f.delta.natAbs : Int) :=
     Int.natCast_dvd_natCast.2 (gnat_dvd_natAbs hf)
-  exact Dvd.dvd.trans h (Int.natAbs_dvd.1 (dvd_refl _))
+  exact Int.dvd_natAbs.1 h
 
 /-- The four local rewrites, parameterised by the config. -/
 inductive Local (cfg : Config) : List Nat → List Nat → Prop
@@ -136,9 +136,9 @@ theorem reach_dvd {cfg : Config} {s t : List Nat} (h : Reach cfg s t) :
   | refl s => simp
   | @step s t u hst _ ih =>
     have h1 := step_dvd hst
-    have hsplit : (total u : Int) - total s
-        = ((total u : Int) - total t) + ((total t : Int) - total s) := by omega
-    rw [hsplit]; exact dvd_add ih h1
+    obtain ⟨p, hp⟩ := ih
+    obtain ⟨q, hq⟩ := h1
+    exact ⟨p + q, by rw [Int.mul_add, ← hp, ← hq]; omega⟩
 
 /-- **Necessary condition (any number of false sums).**  If a single ball `s`
     can be turned into a single ball `t`, then `g ∣ (t − s)`. -/
@@ -188,7 +188,7 @@ theorem inv_step {s t : List Nat} (h : Step classic s t) (hs : Inv s) : Inv t :=
     have htt : total t = n + total rest := by
       rw [total_perm hpt, total_append]; simp only [total_cons, total_nil]; omega
     have haout : Pos [n / 2, (n + 1) / 2] := by
-      intro x hx; simp only [List.mem_cons, List.mem_singleton, List.not_mem_nil, or_false] at hx
+      intro x hx; simp only [List.mem_cons, List.not_mem_nil, or_false] at hx
       rcases hx with h | h <;> omega
     refine ⟨pos_perm hpt.symm (pos_append haout hposrest), ?_⟩
     rcases hval with hv | hv
@@ -196,23 +196,22 @@ theorem inv_step {s t : List Nat} (h : Step classic s t) (hs : Inv s) : Inv t :=
     · exfalso
       have heq : n :: rest = [21] := by simpa using List.perm_singleton.1 (hps.symm.trans hv)
       injection heq with hn21 hrest
-      exact (hc ⟨9, 10, 21⟩ (by simp [classic])) hn21
+      exact (hc ⟨9, 10, 21⟩ (by simp [classic])) hn21.symm
   | fsplit f hf =>
     have hfe : f = ⟨9, 10, 21⟩ := by simpa [classic] using hf
     subst hfe
     have hts : total s = 21 + total rest := by
-      rw [total_perm hps, total_append]; simp only [total_cons, total_nil]; omega
+      rw [total_perm hps, total_append]; simp only [total_cons, total_nil]
     have htt : total t = 19 + total rest := by
-      rw [total_perm hpt, total_append]; simp only [total_cons, total_nil]; omega
+      rw [total_perm hpt, total_append]; simp only [total_cons, total_nil]
     have haout : Pos [9, 10] := by
-      intro x hx; simp only [List.mem_cons, List.mem_singleton, List.not_mem_nil, or_false] at hx
+      intro x hx; simp only [List.mem_cons, List.not_mem_nil, or_false] at hx
       rcases hx with h | h <;> omega
     refine ⟨pos_perm hpt.symm (pos_append haout hposrest), ?_⟩
     rcases hval with hv | hv
     · exfalso; omega
     · have hlen := (hps.symm.trans hv).length_eq
-      simp only [List.length_append, List.length_cons, List.length_singleton,
-        List.length_nil] at hlen
+      simp only [List.length_append, List.length_cons, List.length_nil] at hlen
       have hr : rest = [] := List.length_eq_zero_iff.1 (by omega)
       subst hr; left; simpa using htt
   | nmerge x y _ =>
@@ -227,14 +226,13 @@ theorem inv_step {s t : List Nat} (h : Step classic s t) (hs : Inv s) : Inv t :=
     · left; omega
     · exfalso
       have hlen := (hps.symm.trans hv).length_eq
-      simp only [List.length_append, List.length_cons, List.length_singleton,
-        List.length_nil] at hlen
+      simp only [List.length_append, List.length_cons, List.length_nil] at hlen
       omega
   | fmerge f hf =>
     have hfe : f = ⟨9, 10, 21⟩ := by simpa [classic] using hf
     subst hfe
     have hts : total s = 19 + total rest := by
-      rw [total_perm hps, total_append]; simp only [total_cons, total_nil]; omega
+      rw [total_perm hps, total_append]; simp only [total_cons, total_nil]
     have haout : Pos [21] := by intro z hz; simp only [List.mem_singleton] at hz; omega
     refine ⟨pos_perm hpt.symm (pos_append haout hposrest), ?_⟩
     rcases hval with hv | hv
@@ -242,8 +240,7 @@ theorem inv_step {s t : List Nat} (h : Step classic s t) (hs : Inv s) : Inv t :=
       subst hr; right; simpa using hpt
     · exfalso
       have hlen := (hps.symm.trans hv).length_eq
-      simp only [List.length_append, List.length_cons, List.length_singleton,
-        List.length_nil] at hlen
+      simp only [List.length_append, List.length_cons, List.length_nil] at hlen
       omega
 
 theorem inv_reach {s t : List Nat} (h : Reach classic s t) : Inv s → Inv t := by
@@ -258,8 +255,13 @@ theorem classic_trap : ¬ Reach classic [21] [23] := by
     ⟨fun x hx => by have : x = 21 := List.mem_singleton.1 hx; omega, Or.inr (List.Perm.refl _)⟩
   obtain ⟨_, hv⟩ := inv_reach h hi
   rcases hv with h19 | hp
-  · simp only [total_cons, total_nil] at h19
-  · have : (23 : Nat) = 21 := by simpa using List.perm_singleton.1 hp
+  · simp only [total_cons, total_nil] at h19; omega
+  · have h2321 : (23 : Nat) = 21 := by simpa using List.perm_singleton.1 hp
     omega
 
 end YaStupid
+
+-- Trust check: these print the axiom dependencies (should be the standard
+-- [propext, Classical.choice, Quot.sound] — and crucially NOT `sorryAx`).
+#print axioms YaStupid.reach_congr
+#print axioms YaStupid.classic_trap

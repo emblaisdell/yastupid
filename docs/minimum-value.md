@@ -283,3 +283,23 @@ total stays $>H=21$. $\checkmark$
 
 The congruence $g\mid(t-s)$ is necessary always (§2) and, once $s,t\ge M$,
 sufficient (§4); the bound $M=H+1$ is sharp (§5).
+
+---
+
+## 8. Machine-checked fragment (Lean 4)
+
+Two ends of this note are formalized and checked in Lean 4 (core, no Mathlib;
+Lean 4.31.0) in [`../lean/YaStupid.lean`](../lean/YaStupid.lean):
+
+- **`reach_congr`** mechanizes §2 — the necessary congruence — for an *arbitrary
+  finite list of false sums*: if `[s]` reaches `[t]` under the four moves (normal
+  and false split/merge, up to reordering), then $g \mid (t-s)$.
+- **`classic_trap`** mechanizes §5 — the sharpness witness — proving
+  $21 \not\to 23$ in Classic mode via the invariant "positive, and either
+  totalling $19$ or being exactly the single ball $21$".
+
+Both are confirmed to use no `sorry` (axioms: `propext, Classical.choice,
+Quot.sound`). The **sufficiency** direction (§4) — Bézout pumps plus the carving
+lemma — is the paper argument and is *not* yet mechanized: it wants a multiset
+partition lemma and Bézout, which sit most naturally on Mathlib. See
+[`../lean/README.md`](../lean/README.md) for scope and how to re-check.

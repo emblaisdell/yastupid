@@ -36,6 +36,9 @@ Classic: `g = 2`, `H = 21`, `M = 22`. The bound is sharp because of the **21
 trap** (`21 ↛ 23`). Full statement, proof, and sharpness are in
 [`docs/minimum-value.md`](docs/minimum-value.md).
 
+The necessary condition (for any number of false sums) and the 21-trap are also
+**machine-checked in Lean 4** — see [`lean/`](lean/).
+
 ## Run locally
 
 It's a static site — just serve the folder:
