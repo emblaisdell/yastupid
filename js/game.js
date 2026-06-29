@@ -93,8 +93,8 @@ function startLevel(s, t) {
 function newRandomLevel() { const { s, t } = generateLevel(RULESETS[mode].falseSums); startLevel(s, t); }
 
 /* ------------------------------- physics ---------------------------------- */
-const GRAV = 3.2;        // mild pull toward the centre
-const BEAM_PULL = 165;   // strong & fast: a beam yanks balls together, shoving others aside
+const GRAV = 0.9;        // gentle drift toward the centre (keeps them loosely gathered)
+const BEAM_SPEED = 760;  // px/s a beam reels its two balls together (position-based, reliable)
 const DAMP = 0.85;
 const SEP_GAP = 5;       // keep this much space between rims
 
@@ -102,20 +102,24 @@ function inAnyBeam(id) { return beams.some(b => b.a === id || b.b === id); }
 function beamedTogether(a, b) { return beams.some(x => (x.a === a && x.b === b) || (x.a === b && x.b === a)); }
 
 function step(dt) {
-  // forces: centre gravity + beam attraction
+  // gentle centre gravity
   for (const b of balls) { b.vx += -b.x * GRAV * dt; b.vy += -b.y * GRAV * dt; }
-  for (const beam of beams) {
-    const A = ballById(beam.a), B = ballById(beam.b); if (!A || !B) continue;
-    let dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy) || 0.001;
-    const nx = dx / d, ny = dy / d, f = BEAM_PULL * dt;
-    A.vx += nx * f; A.vy += ny * f; B.vx -= nx * f; B.vy -= ny * f;
-  }
-  // integrate
+  // integrate free motion
   for (const b of balls) {
     b.vx *= DAMP; b.vy *= DAMP;
     const sp = Math.hypot(b.vx, b.vy); if (sp > 1400) { b.vx *= 1400 / sp; b.vy *= 1400 / sp; }
     b.x += b.vx * dt; b.y += b.vy * dt;
     if (b.pulse > 1) b.pulse = Math.max(1, b.pulse - dt * 3);
+  }
+  // beams reel their pair together directly, so damping/gravity can't stall them
+  for (const beam of beams) {
+    const A = ballById(beam.a), B = ballById(beam.b); if (!A || !B) continue;
+    let dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy) || 0.001;
+    const nx = dx / d, ny = dy / d;
+    const close = Math.min(d, Math.max(BEAM_SPEED * dt, d * 0.30));
+    A.x += nx * close * 0.5; A.y += ny * close * 0.5;
+    B.x -= nx * close * 0.5; B.y -= ny * close * 0.5;
+    A.vx += nx * 60; A.vy += ny * 60; B.vx -= nx * 60; B.vy -= ny * 60;   // a little oomph for feel
   }
   // hard separation so balls never overlap (a few relaxation passes)
   for (let pass = 0; pass < 3; pass++) {
@@ -213,25 +217,28 @@ function drawBeam(ax, ay, av, bx, by, bv, aiming) {
   const x1 = toScreenX(ax), y1 = toScreenY(ay), x2 = toScreenX(bx), y2 = toScreenY(by);
   const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 0.001;
   const px = -dy / len, py = dx / len;
-  const wob = Math.sin(tNow * 9) * Math.min(13, len * 0.07);
+  const wob = Math.sin(tNow * 11) * Math.min(15, len * 0.08);
   const cx = (x1 + x2) / 2 + px * wob, cy = (y1 + y2) / 2 + py * wob;
   const grad = ctx.createLinearGradient(x1, y1, x2, y2);
-  grad.addColorStop(0, `hsl(${valueHue(av)},85%,60%)`);
-  grad.addColorStop(1, `hsl(${valueHue(bv)},85%,60%)`);
-  ctx.save(); ctx.lineCap = 'round';
-  ctx.globalAlpha = aiming ? .35 : .55; ctx.strokeStyle = grad; ctx.lineWidth = (aiming ? 7 : 10) * zoom + 1;
-  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.quadraticCurveTo(cx, cy, x2, y2); ctx.stroke();
-  ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 1;
-  ctx.strokeStyle = 'rgba(255,250,235,.95)'; ctx.lineWidth = (aiming ? 2 : 3) * zoom + .5;
-  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.quadraticCurveTo(cx, cy, x2, y2); ctx.stroke();
-  if (!aiming) {
-    const beads = Math.max(2, Math.floor(len / 30));
-    for (let i = 0; i < beads; i++) {
-      const p = ((i / beads) + tNow * 0.7) % 1, mt = 1 - p;
-      const x = mt * mt * x1 + 2 * mt * p * cx + p * p * x2;
-      const y = mt * mt * y1 + 2 * mt * p * cy + p * p * y2;
-      ctx.fillStyle = '#fffbe9'; ctx.beginPath(); ctx.arc(x, y, 2.6 * zoom + .8, 0, 7); ctx.fill();
-    }
+  grad.addColorStop(0, `hsl(${valueHue(av)},90%,62%)`);
+  grad.addColorStop(.5, '#fff');
+  grad.addColorStop(1, `hsl(${valueHue(bv)},90%,62%)`);
+  const stroke = w => { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.quadraticCurveTo(cx, cy, x2, y2); ctx.lineWidth = w; ctx.stroke(); };
+  const s = zoom;
+  ctx.save(); ctx.lineCap = 'round'; ctx.globalCompositeOperation = 'lighter';
+  // wide soft energy halo
+  ctx.strokeStyle = grad; ctx.globalAlpha = .35; stroke((aiming ? 16 : 22) * s + 4);
+  // bright coloured beam
+  ctx.globalAlpha = .9; stroke((aiming ? 8 : 11) * s + 2);
+  // white-hot core
+  ctx.strokeStyle = 'rgba(255,252,240,1)'; ctx.globalAlpha = 1; stroke((aiming ? 3 : 4) * s + 1.2);
+  // travelling energy beads (always — sells the "proton beam")
+  const beads = Math.max(3, Math.floor(len / 24));
+  for (let i = 0; i < beads; i++) {
+    const p = ((i / beads) + tNow * 0.9) % 1, mt = 1 - p;
+    const x = mt * mt * x1 + 2 * mt * p * cx + p * p * x2;
+    const y = mt * mt * y1 + 2 * mt * p * cy + p * p * y2;
+    ctx.fillStyle = '#fffbe9'; ctx.beginPath(); ctx.arc(x, y, 3 * s + 1, 0, 7); ctx.fill();
   }
   ctx.restore();
 }
