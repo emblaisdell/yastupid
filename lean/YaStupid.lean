@@ -313,6 +313,81 @@ theorem cfg222_5_to_7 : Reach cfg222 [5] [7] :=
   reach_move []      (Local.nmerge 5 2 (by decide))           (by decide) <|
   Reach.refl _
 
+/-! ### Full sufficiency, reduced to the two one-step pumps
+
+The clean "carve a trigger at fixed total, fire once" picture is *not* enough on
+its own — e.g. in Classic the single ball `42` has only the normal split
+`42 → {21,21}` (both halves locked), so `{9,10}` cannot be formed at total `42`;
+reaching `44` must dip the total via a false move and climb back. A correct, fully
+general construction of the one-step pumps is therefore subtle (it is the open
+piece; see the note). What we *do* mechanize here, with no `sorry`, is the
+reduction: **once the two pumps hold for a configuration, every congruent pair
+above `M` is solvable.** -/
+
+/-- `H = max_i max(a_i+b_i, c_i)`. -/
+def Hnat (cfg : Config) : Nat := cfg.foldr (fun f acc => max (max (f.a + f.b) f.c) acc) 0
+/-- The guaranteed threshold `M = H + 1`. -/
+def Mval (cfg : Config) : Nat := Hnat cfg + 1
+
+/-- Iterate the climb pump `k` times: `[n] → [n + k·g]`. -/
+theorem reach_up_k {cfg : Config}
+    (climb : ∀ n, Mval cfg ≤ n → Reach cfg [n] [n + gnat cfg]) (k : Nat) :
+    ∀ n, Mval cfg ≤ n → Reach cfg [n] [n + k * gnat cfg] := by
+  induction k with
+  | zero => intro n _; simpa using Reach.refl [n]
+  | succ k ih =>
+    intro n hn
+    have h1 := ih n hn
+    have h2 := climb (n + k * gnat cfg) (Nat.le_trans hn (Nat.le_add_right _ _))
+    have e : n + k * gnat cfg + gnat cfg = n + (k + 1) * gnat cfg := by
+      rw [Nat.add_mul, Nat.one_mul]; omega
+    rw [e] at h2
+    exact reach_trans h1 h2
+
+/-- Iterate the descend pump `k` times: `[n + k·g] → [n]`. -/
+theorem reach_down_k {cfg : Config}
+    (descend : ∀ n, Mval cfg ≤ n → Reach cfg [n + gnat cfg] [n]) (k : Nat) :
+    ∀ n, Mval cfg ≤ n → Reach cfg [n + k * gnat cfg] [n] := by
+  induction k with
+  | zero => intro n _; simpa using Reach.refl [n]
+  | succ k ih =>
+    intro n hn
+    have h2 := descend (n + k * gnat cfg) (Nat.le_trans hn (Nat.le_add_right _ _))
+    have e : n + k * gnat cfg + gnat cfg = n + (k + 1) * gnat cfg := by
+      rw [Nat.add_mul, Nat.one_mul]; omega
+    rw [e] at h2
+    exact reach_trans h2 (ih n hn)
+
+/-- **Full sufficiency, reduced to the pumps.**  Given the one-step climb
+    `[n] → [n+g]` and descend `[n+g] → [n]` for every `n ≥ M`, every pair `s,t ≥ M`
+    with `g ∣ (t − s)` (the exact congruence of `reach_congr`) is solvable. -/
+theorem sufficiency_of_pumps {cfg : Config}
+    (climb : ∀ n, Mval cfg ≤ n → Reach cfg [n] [n + gnat cfg])
+    (descend : ∀ n, Mval cfg ≤ n → Reach cfg [n + gnat cfg] [n])
+    {s t : Nat} (hs : Mval cfg ≤ s) (ht : Mval cfg ≤ t)
+    (hg : gz cfg ∣ ((t : Int) - s)) :
+    Reach cfg [s] [t] := by
+  have hg' : (gnat cfg : Int) ∣ ((t : Int) - s) := hg
+  rcases Nat.le_total s t with hst | hst
+  · have hc : ((t - s : Nat) : Int) = (t : Int) - s := by omega
+    have hdvd : gnat cfg ∣ (t - s) := Int.natCast_dvd_natCast.1 (by rw [hc]; exact hg')
+    obtain ⟨k, hk⟩ := hdvd
+    have hk' : t - s = k * gnat cfg := by rw [Nat.mul_comm] at hk; exact hk
+    have e : s + k * gnat cfg = t := by omega
+    have hr := reach_up_k climb k s hs
+    rwa [e] at hr
+  · have hc : ((s - t : Nat) : Int) = (s : Int) - t := by omega
+    have hg2 : (gnat cfg : Int) ∣ ((s : Int) - t) := by
+      have h := dvd_neg' hg'
+      have e2 : -((t : Int) - s) = (s : Int) - t := by omega
+      rwa [e2] at h
+    have hdvd : gnat cfg ∣ (s - t) := Int.natCast_dvd_natCast.1 (by rw [hc]; exact hg2)
+    obtain ⟨k, hk⟩ := hdvd
+    have hk' : s - t = k * gnat cfg := by rw [Nat.mul_comm] at hk; exact hk
+    have e : t + k * gnat cfg = s := by omega
+    have hr := reach_down_k descend k t ht
+    rwa [e] at hr
+
 end YaStupid
 
 -- Trust check: these print the axiom dependencies (should be the standard
@@ -321,3 +396,4 @@ end YaStupid
 #print axioms YaStupid.classic_trap
 #print axioms YaStupid.cfg222_5_to_7
 #print axioms YaStupid.classic_21_to_19
+#print axioms YaStupid.sufficiency_of_pumps

@@ -28,6 +28,12 @@ reflexive/transitive closure `Reach`.
   **`cfg222_5_to_7`** — a checked proof that the lie `2 + 2 = 2` (which makes a
   field of all ones impossible) still solves its in-range puzzle `5 → 7`. Each
   step is a real `Step`; the reorderings are closed by `decide`.
+- **`sufficiency_of_pumps`** — the reduction: for *any* configuration, **if** the
+  two one-step pumps hold for every `n ≥ M` (climb `[n] → [n+g]` and descend
+  `[n+g] → [n]`), **then** every pair `s,t ≥ M` with `g ∣ (t − s)` is solvable.
+  Proved via `reach_up_k` / `reach_down_k` (iterate a pump `k` times) and the
+  `g ∣ (t−s)` arithmetic. This is the whole sufficiency argument *except* the two
+  pumps themselves.
 
 All theorems are checked to depend only on the standard axioms
 `[propext, Classical.choice, Quot.sound]` — **no `sorryAx`**, so there are no
@@ -36,18 +42,30 @@ every build.
 
 ## What is *not* (yet) mechanized
 
-The **universal sufficiency** statement (`∀ s,t ≥ M` with `g ∣ (t − s)`, solvable)
-is proved on paper in the note (§4: Bézout pumps that stay above `H`, plus
-**Lemma 1, trigger formation**). It is **not** formalized here. An earlier draft
-proved carving via an "all-ones" field, which is *false* in general
-(`2 + 2 = 2` never reduces to ones) — so the corrected proof builds triggers by
-recombination, and mechanizing that for an arbitrary configuration is a
-substantial undertaking, most naturally over Mathlib (whose prebuilt cache is
-unreachable from the sandbox this was developed in — the toolchain itself had to
-be side-loaded from GitHub release assets because the Lean CDN was blocked). What
-*is* machine-checked are the two ends that pin the threshold (necessity and the
-sharpness trap) plus the worked sufficiency witnesses above; the universal middle
-is the open piece.
+After `sufficiency_of_pumps`, the **entire** remaining gap is the two one-step
+pump lemmas:
+
+```
+climb   : ∀ n, Mval cfg ≤ n → Reach cfg [n] [n + gnat cfg]
+descend : ∀ n, Mval cfg ≤ n → Reach cfg [n + gnat cfg] [n]
+```
+
+Discharging them is exactly trigger formation (§4.1 of the note) and it is
+genuinely subtle — *not* a routine carve. The sharpest illustration, in Classic:
+the single ball `42` has only the normal split `42 → {21,21}` (both halves are the
+locked RHS), so `{9,10}` cannot be assembled at total `42`; reaching `44` must dip
+the total through a false move and climb back. A correct, uniform construction of
+the pumps for an arbitrary configuration is therefore a real piece of work, most
+naturally done over Mathlib (whose prebuilt cache is unreachable from the sandbox
+this was developed in — the toolchain itself had to be side-loaded from GitHub
+release assets because the Lean CDN was blocked).
+
+So the present status is: **necessity, sharpness, the pump→sufficiency reduction,
+and concrete sufficiency witnesses are machine-checked; the two pumps are the lone
+remaining lemmas.** An exhaustive search over the adversarial `{6+7=2, 6+8=3}`
+configuration (where no `1` ever exists) and over the Classic `42` case finds every
+in-range pump reachable, so the pumps are *true* — they are simply not yet
+mechanized.
 
 ## Check it yourself
 

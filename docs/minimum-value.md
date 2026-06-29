@@ -323,15 +323,21 @@ Lean 4.31.0) in [`../lean/YaStupid.lean`](../lean/YaStupid.lean):
   **`cfg222_5_to_7`** — a checked proof that the all‑ones‑breaking lie $2+2=2$
   still solves its in‑range puzzle $5\to7$.
 
+- **`sufficiency_of_pumps`** mechanizes §4.3 — the *reduction*: for any
+  configuration, **if** the one‑step climb `[n]→[n+g]` and descend `[n+g]→[n]`
+  hold for all `n ≥ M`, **then** every congruent pair `s,t ≥ M` is solvable
+  (via `reach_up_k`/`reach_down_k`, iterating a pump $k=\tfrac{|t-s|}{g}$ times).
+
 All of the above are confirmed to use no `sorry` (axioms: `propext,
 Classical.choice, Quot.sound`).
 
-What is **not** mechanized is the *universal* sufficiency statement
-($\forall s,t\ge M$ with $g\mid t-s$). It hinges on Lemma 1 (trigger formation)
-for an arbitrary configuration — the delicate carving argument of §4.1 — which is
-a substantial formalization in its own right (most naturally over Mathlib, whose
-prebuilt cache is unreachable from the sandbox this was developed in). The
-necessary condition and the sharpness trap *pin the threshold*; the worked
-witnesses plus the exhaustive search over the adversarial $\{6+7=2,\,6+8=3\}$
-configuration are strong evidence for the middle, but it remains the open piece.
-See [`../lean/README.md`](../lean/README.md) for scope and how to re-check.
+After the reduction, the **entire** remaining gap is the two one‑step pumps —
+i.e. Lemma 1 (trigger formation, §4.1). These are genuinely subtle, *not* routine
+carves: in Classic the single ball $42$ splits only as $42\to\{21,21\}$ (both
+halves locked), so $\{9,10\}$ cannot be formed at total $42$ and reaching $44$ must
+dip the total through a false move and climb back. A uniform construction for an
+arbitrary configuration is a real undertaking, most naturally done over Mathlib
+(whose prebuilt cache is unreachable from this sandbox). The exhaustive search over
+the adversarial $\{6+7=2,\,6+8=3\}$ *and* over the Classic $42$ case finds every
+in‑range pump reachable, so the pumps are **true** — just not yet mechanized.
+See [`../lean/README.md`](../lean/README.md) for scope and how to re‑check.
