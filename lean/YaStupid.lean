@@ -313,6 +313,27 @@ theorem cfg222_5_to_7 : Reach cfg222 [5] [7] :=
   reach_move []      (Local.nmerge 5 2 (by decide))           (by decide) <|
   Reach.refl _
 
+/-- The hardest Classic climb, machine-checked.  `[42]` splits only to `{21,21}`
+    (both locked), so `{9,10}` cannot be formed at total 42; reaching `44` must dip
+    the total to 40, escape the lock, **re-create a fresh `{9,10}` by normal-splitting
+    a `19`** (`19 → 9,10`), and ride two false-merges back up.  15 states. -/
+theorem classic_42_to_44 : Reach classic [42] [44] :=
+  reach_move []          (Local.nsplit 42 (by decide) (by decide)) (by decide) <|
+  reach_move [21]        (Local.fsplit ⟨9, 10, 21⟩ (by decide))    (by decide) <|
+  reach_move [10, 21]    (Local.nsplit 9 (by decide) (by decide))  (by decide) <|
+  reach_move [5, 10, 21] (Local.nsplit 4 (by decide) (by decide))  (by decide) <|
+  reach_move [2, 10, 21] (Local.nmerge 2 5 (by decide))            (by decide) <|
+  reach_move [2, 7]      (Local.nmerge 10 21 (by decide))          (by decide) <|
+  reach_move [2]         (Local.nmerge 7 31 (by decide))           (by decide) <|
+  reach_move [2]         (Local.nsplit 38 (by decide) (by decide)) (by decide) <|
+  reach_move [2, 19]     (Local.nsplit 19 (by decide) (by decide)) (by decide) <|
+  reach_move [2, 9, 10]  (Local.nsplit 19 (by decide) (by decide)) (by decide) <|
+  reach_move [2, 9, 10]  (Local.fmerge ⟨9, 10, 21⟩ (by decide))    (by decide) <|
+  reach_move [9, 10]     (Local.nmerge 2 21 (by decide))           (by decide) <|
+  reach_move [23]        (Local.fmerge ⟨9, 10, 21⟩ (by decide))    (by decide) <|
+  reach_move []          (Local.nmerge 21 23 (by decide))          (by decide) <|
+  Reach.refl _
+
 /-! ### Full sufficiency, reduced to the two one-step pumps
 
 The clean "carve a trigger at fixed total, fire once" picture is *not* enough on
@@ -397,3 +418,4 @@ end YaStupid
 #print axioms YaStupid.cfg222_5_to_7
 #print axioms YaStupid.classic_21_to_19
 #print axioms YaStupid.sufficiency_of_pumps
+#print axioms YaStupid.classic_42_to_44
