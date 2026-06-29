@@ -77,7 +77,7 @@ body::before{
 
 .readout{
   position:absolute;z-index:6;left:50%;transform:translateX(-50%);
-  top:calc(var(--safe-t) + 80px);
+  top:calc(var(--safe-t) + 108px);
   font-size:13px;font-weight:700;color:var(--ink-soft);
   background:rgba(255,247,225,.7);border:2px solid rgba(202,168,106,.6);
   border-radius:999px;padding:5px 14px;}

@@ -54,7 +54,7 @@ const BALL_R = 30;                                // nominal size (camera defaul
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 let W = 0, VH = 0, DPR = 1;
-const TOP_MARGIN = 118;
+const TOP_MARGIN = 146;
 let BOT_MARGIN = 58;
 function resize() {
   DPR = Math.min(window.devicePixelRatio || 1, 2.5);
