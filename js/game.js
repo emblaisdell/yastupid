@@ -46,7 +46,9 @@ function generateLevel(fs) {
 
 /* ------------------------------ visuals ----------------------------------- */
 function valueHue(v) { return (v * 47) % 360; }   // same number -> same colour
-const BALL_R = 30;                                // every ball is the same size
+// balls are all about the same size, with a gentle bump for bigger numbers
+function radiusFor(v) { return 26 + 1.7 * Math.sqrt(v); }   // ~28 (v=1) .. ~43 (v=99)
+const BALL_R = 30;                                // nominal size (camera default)
 
 /* ------------------------------- state ------------------------------------ */
 const canvas = document.getElementById('board');
@@ -75,7 +77,7 @@ function toScreenY(y) { return camY + y * zoom; }
 function toWorld(sx, sy) { return { x: (sx - camX) / zoom, y: (sy - camY) / zoom }; }
 
 function makeBall(value, x, y, vx = 0, vy = 0) {
-  return { id: nextId++, value, x, y, vx, vy, pulse: 1 };
+  return { id: nextId++, value, x, y, vx, vy, r: radiusFor(value), pulse: 1 };
 }
 function ballById(id) { return balls.find(b => b.id === id); }
 let mode = localStorage.getItem('yastupid_mode') || 'classic';
@@ -92,7 +94,7 @@ function newRandomLevel() { const { s, t } = generateLevel(RULESETS[mode].falseS
 
 /* ------------------------------- physics ---------------------------------- */
 const GRAV = 3.2;        // mild pull toward the centre
-const BEAM_PULL = 78;    // strong: a beam shoves other balls out of the way
+const BEAM_PULL = 165;   // strong & fast: a beam yanks balls together, shoving others aside
 const DAMP = 0.85;
 const SEP_GAP = 5;       // keep this much space between rims
 
@@ -116,13 +118,13 @@ function step(dt) {
     if (b.pulse > 1) b.pulse = Math.max(1, b.pulse - dt * 3);
   }
   // hard separation so balls never overlap (a few relaxation passes)
-  const min = 2 * BALL_R + SEP_GAP;
   for (let pass = 0; pass < 3; pass++) {
     for (let i = 0; i < balls.length; i++)
       for (let j = i + 1; j < balls.length; j++) {
         const A = balls[i], B = balls[j];
         if (beamedTogether(A.id, B.id)) continue;       // let a fusing pair touch
         let dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy) || 0.001;
+        const min = A.r + B.r + SEP_GAP;
         if (d >= min) continue;
         const nx = dx / d, ny = dy / d, overlap = min - d;
         // beamed balls barge through: the non-beamed neighbour yields most
@@ -139,13 +141,13 @@ function step(dt) {
   for (const beam of beams.slice()) {
     const A = ballById(beam.a), B = ballById(beam.b);
     if (!A || !B) { beams = beams.filter(x => x !== beam); continue; }
-    if (Math.hypot(B.x - A.x, B.y - A.y) <= 2 * BALL_R - 2) fuse(A, B);
+    if (Math.hypot(B.x - A.x, B.y - A.y) <= A.r + B.r - 2) fuse(A, B);
   }
 }
 
 function updateCamera(dt) {
   let hw = BALL_R, hh = BALL_R;
-  for (const b of balls) { hw = Math.max(hw, Math.abs(b.x) + BALL_R); hh = Math.max(hh, Math.abs(b.y) + BALL_R); }
+  for (const b of balls) { hw = Math.max(hw, Math.abs(b.x) + b.r); hh = Math.max(hh, Math.abs(b.y) + b.r); }
   const margin = 16;
   const availW = W / 2 - margin;
   const availH = (VH - TOP_MARGIN - BOT_MARGIN) / 2;
@@ -235,7 +237,7 @@ function drawBeam(ax, ay, av, bx, by, bv, aiming) {
 }
 
 function drawBall(b) {
-  const hue = valueHue(b.value), r = BALL_R * zoom * b.pulse;
+  const hue = valueHue(b.value), r = b.r * zoom * b.pulse;
   const x = toScreenX(b.x), y = toScreenY(b.y);
   ctx.save();
   ctx.shadowColor = 'rgba(40,28,6,.40)'; ctx.shadowBlur = 9; ctx.shadowOffsetY = 5;
@@ -268,7 +270,7 @@ const TAP_MOVE = 14;
 function pos(e) { const r = canvas.getBoundingClientRect(); return toWorld(e.clientX - r.left, e.clientY - r.top); }
 function pointAt(wx, wy) {
   for (let i = balls.length - 1; i >= 0; i--) {
-    const b = balls[i]; if (Math.hypot(wx - b.x, wy - b.y) <= BALL_R + 8 / zoom) return b;
+    const b = balls[i]; if (Math.hypot(wx - b.x, wy - b.y) <= b.r + 8 / zoom) return b;
   }
   return null;
 }
