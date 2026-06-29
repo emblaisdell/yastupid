@@ -331,7 +331,6 @@ function openMenu() {
 function hideMenu() { hide('menu'); }
 function showWin() {
   el('winLine').textContent = `${config.s} → ${config.t} in ${moves} move${moves === 1 ? '' : 's'}.`;
-  el('burst').textContent = ['⭐', '🎉', '🏆', '💥', '🎯'][moves % 5];
   show('win');
 }
 
