@@ -68,18 +68,25 @@ interval**, exactly the shape of the Classic proof (whose base was discharged by
 BFS). For any *concrete* single sum the base is finite and dischargeable the same
 way, giving a complete proof per instance.
 
-## The climb pump, discharged symbolically for `a + b < c`
+## Full symbolic sufficiency for `a + b < c` with legs `≥ 2` (incl. Classic)
 
-The base carve below is no longer just reduced — for the **whole `a + b < c`
-family** (the "`d < 0`" case, which includes Classic `9+10=21` and every sum whose
-two legs undershoot, e.g. `2+3=9`) the **climb pump is now fully proved,
-unconditionally and `sorry`-free**:
+Both base pumps are now discharged symbolically and `sorry`-free, giving
+**complete unconditional sufficiency for the whole family `2 ≤ a, b` and
+`a + b < c`** — which includes Classic `9+10=21` (`a=9, b=10`):
 
 ```
-climb_dneg : a + b < c → ∀ n, Mval ≤ n → Reach [⟨a,b,c⟩] [n] [n + gnat]
+single_sufficiency_dneg : 2 ≤ a → 2 ≤ b → a + b < c →
+  ∀ s t, Mval ≤ s → Mval ≤ t → g ∣ (t−s) → Reach [⟨a,b,c⟩] [s] [t]
 ```
 
-It is `climb_of_base` (the halving recursion) fed `baseC_dneg`, which discharges the
+Together with `reach_congr` (necessity) and the sharpness witness, this
+**completely characterizes** solvability for every such single sum. In particular
+`classic_sufficiency_symbolic` re-derives Classic sufficiency from it with **no BFS
+base cases at all**.
+
+### The climb pump (`climb_dneg`)
+
+`climb_of_base` (the halving recursion) fed `baseC_dneg`, which discharges the
 entire base interval `[c+1, 2c]` by three explicit symbolic constructions:
 
 - **`climbCleanLow`** (`c+1 ≤ n ≤ 2c−2`) — scatter `[n]` to ones (`getUnits`,
@@ -98,17 +105,36 @@ entire base interval `[c+1, 2c]` by three explicit symbolic constructions:
 This single uniform argument **subsumes Classic's 22 BFS-found `baseClimb` lemmas**
 (`bc_22 … bc_43`, including the 15-state `classic_42_to_44`).
 
+### The descend pump (`baseD_dneg`)
+
+The key enabler is **`gatherBig`**: when `2 ≤ a, b`, the value `1` is *not* a leg,
+so a "+1 accumulator" (`{k,1}` is never `{a,b}`) builds **any** ball from ones with
+no cap and no forbidden-pair edge cases. Then **`loseG`** drops a pile of ones by
+exactly `g` — build a fresh `c`, false-split it to `{a,b}`, scatter the legs back —
+and **`descDrop`** drops a single ball `[m]` to `m−g` ones over the whole base range
+`[c+1+g, 2c+2g]`:
+
+- scatterable `m` (`getUnits` for `m ≤ 2c−2`, one split + `getUnits` for
+  `m ∈ [2c+2, 2c+2g]` via `scatterHi`) → ones → `loseG`;
+- the three `c`-producing values `2c−1, 2c, 2c+1` (`descDrop_2cm1/2c/2cp1`): the
+  split exposes a `c` directly, which is false-split and the rest scattered (the
+  `2c` case first folds the leftover locked `c` into `a+c`).
+
+`baseD_dneg` then reads `[n+g] → 1^n → [n]` (`descDrop` then `gatherBig`).
+
 ## What is *not* (yet) mechanized
 
-What remains for the *unconditional symbolic* theorem is the **descend pump** (and
-the dual `a + b > c` case). Descend is now well-understood: a `c` is *harvested*
-for free by a normal merge `{1, c−1} → c` (always legal, since `{1,c−1} = {a,b}`
-would force `max(a,b) = c−1` against `a+b < c`), then false-split to lose `g`. The
-obstacle is the same `c`-wall as the climb dip, but across a *range*: the descend
-base starts from `[n+g]` with `n+g` as large as `2c+2g`, so a symbolic
-"scatter-past-the-wall" (carve a `c` out of a large ball) is needed — comparable in
-size to `climb2c`, but uniform over the whole high range rather than one value.
-This is intricate and most naturally lives over Mathlib.
+Two things remain for the *fully general* symbolic theorem:
+
+1. **The `min(a,b) = 1` sub-case of `a + b < c`.** Everything above assumes
+   `2 ≤ a, b` (so `gatherBig` is clean). When a leg is `1`, building a `c` from ones
+   must route around the one forbidden merge `{1, max(a,b)} = {a,b}` (and `a=b=1` is
+   special — the only merge of two ones is the forced `{1,1} → c`). The constructions
+   are the same shape with extra cases.
+2. **The dual `a + b > c` case** (e.g. `2+2=2`), where `c` is *small*; the trigger
+   to form is a `c` (cheap) and the locked/stuck structure differs.
+
+Both are intricate but mechanical; they are most comfortable over Mathlib.
 
 Equivalently phrased — the two one-step pumps for an **arbitrary** configuration:
 
@@ -118,20 +144,21 @@ descend : ∀ n, Mval cfg ≤ n → Reach cfg [n + gnat cfg] [n]
 ```
 
 `sufficiency_of_pumps` already reduces *general* sufficiency to these. For Classic
-they are discharged above (halving recursion + finite base cases). For a general
-config the same recursion idea should work, but the base set is no longer a fixed
-small interval and the carving interacts with arbitrarily many locked values and
-forbidden pairs — so it wants Mathlib-level `List`/`Multiset` automation (whose
-cache is unreachable from the sandbox this was developed in; the toolchain itself
-had to be side-loaded from GitHub release assets because the Lean CDN was blocked).
+they are discharged above (and now also re-derived symbolically). For a single sum
+with `2 ≤ a, b` and `a + b < c` **both pumps are fully proved** (`climb_dneg`,
+`baseD_dneg`); what remains (the `min(a,b)=1` edge and the `a+b>c` case) is uniform
+but case-heavy, and wants Mathlib-level `List`/`Multiset` automation (whose cache is
+unreachable from the sandbox this was developed in — the toolchain itself had to be
+side-loaded from GitHub release assets because the Lean CDN was blocked).
 
 So the present status: **Classic is completely characterized (necessity +
-sufficiency + sharpness, all `sorry`-free); for an arbitrary single sum,
-necessity and the pump→sufficiency reduction are done; and for the whole
-`a + b < c` family the climb pump is now fully discharged symbolically
-(`climb_dneg`), leaving the descend pump (and the `a + b > c` case) as the
-remaining piece.** Exhaustive search over the adversarial `{6+7=2, 6+8=3}`
-(where no `1` ever exists) finds every in-range pump reachable, so they are *true*.
+sufficiency + sharpness, all `sorry`-free) — and now *also* as a corollary of a
+fully symbolic theorem. For every single sum with `2 ≤ a, b` and `a + b < c`,
+solvability is completely characterized: necessity (`reach_congr`), both pumps
+(`climb_dneg`, `baseD_dneg`), and hence `single_sufficiency_dneg`. The remaining
+gaps are the `min(a,b)=1` edge of `a + b < c` and the dual `a + b > c` case.**
+Exhaustive search over the adversarial `{6+7=2, 6+8=3}` (where no `1` ever exists)
+finds every in-range pump reachable, so the general pumps are *true* too.
 
 ## Check it yourself
 

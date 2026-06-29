@@ -135,11 +135,13 @@ the remainder into one ball the same way. $\square$
 > **Honesty note.** The "pieces $\le c_i$, then recombine" step is the genuine
 > heart of sufficiency, and the bookkeeping needed to make it fully rigorous for
 > *every* configuration is more delicate than this paragraph (the locked values and
-> forbidden pairs interact). It is **not yet machine‑checked** (see §8). As
-> evidence that it is nonetheless *true*: an exhaustive search confirms every
-> in‑range pump for the adversarial $\{6+7=2,\,6+8=3\}$ above (where no $1$ ever
-> exists), and Lean‑checked witnesses solve $2+2=2$'s in‑range puzzle $5\to7$ and
-> Classic's $19\to21$ / $21\to19$.
+> forbidden pairs interact). It is now **machine‑checked for every single sum with
+> $2\le a,b$ and $a+b<c$** (`single_sufficiency_dneg`, see §8) — which includes
+> Classic — leaving only the $\min(a,b)=1$ edge and the dual $a+b>c$ case
+> unmechanized. As evidence those remaining cases are also *true*: an exhaustive
+> search confirms every in‑range pump for the adversarial $\{6+7=2,\,6+8=3\}$ above
+> (where no $1$ ever exists), and Lean‑checked witnesses solve $2+2=2$'s in‑range
+> puzzle $5\to7$ and Classic's $19\to21$ / $21\to19$.
 
 ### 4.2 One pump in each direction
 
@@ -345,20 +347,24 @@ Classical.choice, Quot.sound`).
   `sorry`‑free — to the climb/descend pumps on the **bounded base interval**
   `[M, 2H]` (resp. `[M, 2H+g]`).
 
-- **`climb_dneg`** discharges the **climb pump completely and unconditionally for
-  the whole `a + b < c` family** (which includes Classic). Its base
-  `baseC_dneg` covers all of `[c+1, 2c]` with three explicit symbolic
-  constructions — `climbCleanLow` (clean range: scatter→gather→fire→reel),
-  `climb2cm1` (`n = 2c-1`), and `climb2c` (the stuck value `n = 2c`, the symbolic
-  analogue of Classic's hand-checked `42→44`, now general for any `a,b`). This
-  single argument subsumes Classic's 22 BFS climb lemmas.
+- **`single_sufficiency_dneg`** discharges **full sufficiency, symbolically and
+  unconditionally, for every single sum with `2 ≤ a, b` and `a + b < c`** — which
+  includes Classic `9+10=21`. Both base pumps are proved:
+  - *climb* (`climb_dneg` ← `baseC_dneg`) covers `[c+1, 2c]` via `climbCleanLow`
+    (clean range: scatter→gather→fire→reel), `climb2cm1` (`n=2c-1`), and `climb2c`
+    (the stuck value `n=2c`, the symbolic analogue of Classic's hand-checked
+    `42→44`, now general for any `a,b`);
+  - *descend* (`baseD_dneg`) uses `gatherBig` (with `2 ≤ a,b`, a "+1 accumulator"
+    builds any ball from ones — `{k,1}` is never `{a,b}`), `loseG` (build a `c`,
+    false-split it, scatter back — dropping a pile of ones by exactly `g`), and
+    `descDrop` (drop `[m]` to `m−g` ones across `[c+1+g, 2c+2g]`, with the three
+    `c`-producing values `2c−1, 2c, 2c+1` handled directly).
 
-The remaining open piece is the **descend pump** for symbolic `a,b,c` (and the
-dual `a + b > c` case). A `c` is harvested for free by a normal merge
-`{1, c-1} → c` (always legal when `a + b < c`) and then false-split to lose `g`;
-the obstacle is the same `c`-wall as the climb's stuck value, but now across the
-*range* of descend start values `[n+g]` up to `2c+2g`, so it needs a uniform
-"scatter-past-the-wall" carve. It is intricate and most naturally lives over
-Mathlib. For any *concrete* single sum the base is finite and dischargeable by BFS
-(the Classic pipeline), so every concrete instance is fully provable. See
-[`../lean/README.md`](../lean/README.md).
+  `classic_sufficiency_symbolic` re-derives Classic from this with **no BFS**.
+
+The remaining open pieces are (1) the `min(a,b)=1` edge of `a + b < c` (where
+building a `c` from ones must route around the single forbidden merge
+`{1, max(a,b)} = {a,b}`, and `a=b=1` is special), and (2) the dual `a + b > c`
+case (e.g. `2+2=2`). Both are uniform but case-heavy. For any *concrete* single sum
+the base is finite and dischargeable by BFS (the Classic pipeline), so every
+concrete instance is fully provable. See [`../lean/README.md`](../lean/README.md).
