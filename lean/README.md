@@ -52,10 +52,33 @@ All theorems are checked to depend only on the standard axioms
 gaps. The `#print axioms` lines at the bottom of the file re-confirm this on
 every build.
 
+## Toward the symbolic single-sum theorem
+
+For an **arbitrary single false sum** `[⟨a,b,c⟩]` (`a+b ≠ c`):
+
+- **`climb_of_base` / `descend_of_base`** — the halving recursion **generalizes
+  symbolically** (frame rule + `reach_move` + `omega` for every div/max bound):
+  each one-step pump for `n > 2H` reduces to the base interval.
+- **`single_sufficiency_of_base`** — composing with `sufficiency_of_pumps`:
+  for any single sum, **if** the climb pump holds on `[M, 2H]` and the descend pump
+  on `[M, 2H+g]`, **then** full sufficiency holds (`∀ s,t ≥ M`, `g ∣ (t−s)`).
+
+So symbolic single-sum sufficiency is reduced — `sorry`-free — to a **bounded base
+interval**, exactly the shape of the Classic proof (whose base was discharged by
+BFS). For any *concrete* single sum the base is finite and dischargeable the same
+way, giving a complete proof per instance.
+
 ## What is *not* (yet) mechanized
 
-**Classic mode is fully done.** What remains open is the two one-step pumps for an
-**arbitrary** configuration:
+**Classic mode is fully done**, and the general single-sum case is reduced to its
+base interval (above). The remaining open core, for the *unconditional symbolic*
+theorem, is the **base carve**: forming the trigger (`{a,b}` or a `c`) on `[M,2H]`
+for symbolic `a,b,c`, including the `c·2^k` **stuck values** (e.g. `2c`, whose only
+normal split is `{c,c}`) that need a total-dipping route — the symbolic analogue of
+Classic's `42`. This is uniform but intricate (build-from-units with the `{a,b}`
+forbidden-pair edges, plus the stuck dips) and most naturally lives over Mathlib.
+
+Equivalently phrased — the two one-step pumps for an **arbitrary** configuration:
 
 ```
 climb   : ∀ n, Mval cfg ≤ n → Reach cfg [n] [n + gnat cfg]

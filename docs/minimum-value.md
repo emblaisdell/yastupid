@@ -339,11 +339,17 @@ Lean 4.31.0) in [`../lean/YaStupid.lean`](../lean/YaStupid.lean):
 All of the above are confirmed to use no `sorry` (axioms: `propext,
 Classical.choice, Quot.sound`).
 
-The **one** remaining open piece is the two one‑step pumps for an *arbitrary*
-configuration (the general case of §4.1). `sufficiency_of_pumps` already reduces
-general sufficiency to them; for Classic they are fully proved as above. For a
-general config the same halving idea applies, but the finite base set and the
-carving's interaction with arbitrarily many locked values/forbidden pairs want
-Mathlib‑level automation (whose cache is unreachable from this sandbox). Exhaustive
-search over the adversarial $\{6+7=2,\,6+8=3\}$ finds every in‑range pump
-reachable, so they are **true**. See [`../lean/README.md`](../lean/README.md).
+- **`single_sufficiency_of_base`** pushes this to an **arbitrary single false sum**
+  `[⟨a,b,c⟩]`: the halving recursion is mechanized symbolically
+  (`climb_of_base`/`descend_of_base`), so sufficiency for any single sum reduces —
+  `sorry`‑free — to the climb/descend pumps on the **bounded base interval**
+  `[M, 2H]` (resp. `[M, 2H+g]`).
+
+The remaining open piece is the **base carve** for symbolic `a,b,c`: forming the
+trigger (`{a,b}` or a `c`) on `[M,2H]`, including the `c\cdot 2^k` **stuck values**
+(e.g. `2c`, whose only normal split is `{c,c}`) which need a total‑dipping route —
+the symbolic analogue of Classic's `42`. It is uniform but intricate (build‑from‑
+units with `{a,b}` forbidden‑pair edges, plus the stuck dips) and most naturally
+lives over Mathlib. For any *concrete* single sum the base is finite and
+dischargeable by BFS (the Classic pipeline), so every concrete instance is fully
+provable. See [`../lean/README.md`](../lean/README.md).
