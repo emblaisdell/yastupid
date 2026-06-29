@@ -345,11 +345,20 @@ Classical.choice, Quot.sound`).
   `sorry`‑free — to the climb/descend pumps on the **bounded base interval**
   `[M, 2H]` (resp. `[M, 2H+g]`).
 
-The remaining open piece is the **base carve** for symbolic `a,b,c`: forming the
-trigger (`{a,b}` or a `c`) on `[M,2H]`, including the `c\cdot 2^k` **stuck values**
-(e.g. `2c`, whose only normal split is `{c,c}`) which need a total‑dipping route —
-the symbolic analogue of Classic's `42`. It is uniform but intricate (build‑from‑
-units with `{a,b}` forbidden‑pair edges, plus the stuck dips) and most naturally
-lives over Mathlib. For any *concrete* single sum the base is finite and
-dischargeable by BFS (the Classic pipeline), so every concrete instance is fully
-provable. See [`../lean/README.md`](../lean/README.md).
+- **`climb_dneg`** discharges the **climb pump completely and unconditionally for
+  the whole `a + b < c` family** (which includes Classic). Its base
+  `baseC_dneg` covers all of `[c+1, 2c]` with three explicit symbolic
+  constructions — `climbCleanLow` (clean range: scatter→gather→fire→reel),
+  `climb2cm1` (`n = 2c-1`), and `climb2c` (the stuck value `n = 2c`, the symbolic
+  analogue of Classic's hand-checked `42→44`, now general for any `a,b`). This
+  single argument subsumes Classic's 22 BFS climb lemmas.
+
+The remaining open piece is the **descend pump** for symbolic `a,b,c` (and the
+dual `a + b > c` case). A `c` is harvested for free by a normal merge
+`{1, c-1} → c` (always legal when `a + b < c`) and then false-split to lose `g`;
+the obstacle is the same `c`-wall as the climb's stuck value, but now across the
+*range* of descend start values `[n+g]` up to `2c+2g`, so it needs a uniform
+"scatter-past-the-wall" carve. It is intricate and most naturally lives over
+Mathlib. For any *concrete* single sum the base is finite and dischargeable by BFS
+(the Classic pipeline), so every concrete instance is fully provable. See
+[`../lean/README.md`](../lean/README.md).

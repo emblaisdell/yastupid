@@ -68,19 +68,47 @@ interval**, exactly the shape of the Classic proof (whose base was discharged by
 BFS). For any *concrete* single sum the base is finite and dischargeable the same
 way, giving a complete proof per instance.
 
+## The climb pump, discharged symbolically for `a + b < c`
+
+The base carve below is no longer just reduced — for the **whole `a + b < c`
+family** (the "`d < 0`" case, which includes Classic `9+10=21` and every sum whose
+two legs undershoot, e.g. `2+3=9`) the **climb pump is now fully proved,
+unconditionally and `sorry`-free**:
+
+```
+climb_dneg : a + b < c → ∀ n, Mval ≤ n → Reach [⟨a,b,c⟩] [n] [n + gnat]
+```
+
+It is `climb_of_base` (the halving recursion) fed `baseC_dneg`, which discharges the
+entire base interval `[c+1, 2c]` by three explicit symbolic constructions:
+
+- **`climbCleanLow`** (`c+1 ≤ n ≤ 2c−2`) — scatter `[n]` to ones (`getUnits`,
+  `scatterClean`, `scatterList`), gather an `a` and a `b` (`gatherPrefix`/`gather`),
+  fire `{a,b} → c`, then reel the leftover ones onto the `c` (`mergeUnitsHi`).
+- **`climb2cm1`** (`n = 2c−1`) — split to `[c−1, c]`, scatter the `c−1`, build a
+  *second* `c`, merge the two `c`s to `2c`, reel the `g−1` carry-ones on.
+- **`climb2c`** (`n = 2c`, the stuck value) — `2c` splits only to `{c,c}` (both
+  locked), so the trigger cannot be formed at total `2c`. The symbolic analogue of
+  Classic's hand-checked `42 → 44`: false-split one `c`, merge its `b` into the
+  other `c` to **break the lock without losing `g`**, split that, scatter to ones,
+  regather **two** `{a,b}` pairs plus a `g`-one carry, fire both, and merge the two
+  fresh `c`s with the carry. Fully general — no `|a−b| ≤ 1` assumption (unlike the
+  `19 → {9,10}` shortcut the concrete `42` proof could use).
+
+This single uniform argument **subsumes Classic's 22 BFS-found `baseClimb` lemmas**
+(`bc_22 … bc_43`, including the 15-state `classic_42_to_44`).
+
 ## What is *not* (yet) mechanized
 
-**Classic mode is fully done**, and the general single-sum case is reduced to its
-base interval (above). The remaining open core, for the *unconditional symbolic*
-theorem, is the **base carve**: forming the trigger (`{a,b}` or a `c`) on `[M,2H]`
-for symbolic `a,b,c`. One half of it is done: **`gather`** builds any needed value
-from units (and is `sorry`-free). The obstacle is its dual, **scatter** (peeling
-units *out* of a ball): the recursion must escape the locked value `c` when it
-appears, and — fatally for a sum-preserving scatter — the `c·2^k` **stuck values**
-(e.g. `2c`, whose only normal split is `{c,c}`) cannot be scattered at fixed total
-at all. They need a total-dipping detour (the symbolic analogue of Classic's `42`)
-which recursively needs to peel a unit out of a `c` — turtles all the way down.
-This is uniform but genuinely intricate, and most naturally lives over Mathlib.
+What remains for the *unconditional symbolic* theorem is the **descend pump** (and
+the dual `a + b > c` case). Descend is now well-understood: a `c` is *harvested*
+for free by a normal merge `{1, c−1} → c` (always legal, since `{1,c−1} = {a,b}`
+would force `max(a,b) = c−1` against `a+b < c`), then false-split to lose `g`. The
+obstacle is the same `c`-wall as the climb dip, but across a *range*: the descend
+base starts from `[n+g]` with `n+g` as large as `2c+2g`, so a symbolic
+"scatter-past-the-wall" (carve a `c` out of a large ball) is needed — comparable in
+size to `climb2c`, but uniform over the whole high range rather than one value.
+This is intricate and most naturally lives over Mathlib.
 
 Equivalently phrased — the two one-step pumps for an **arbitrary** configuration:
 
@@ -98,9 +126,11 @@ cache is unreachable from the sandbox this was developed in; the toolchain itsel
 had to be side-loaded from GitHub release assets because the Lean CDN was blocked).
 
 So the present status: **Classic is completely characterized (necessity +
-sufficiency + sharpness, all `sorry`-free); for arbitrary configurations,
-necessity and the pump→sufficiency reduction are done, and the two general pumps
-are the remaining piece.** Exhaustive search over the adversarial `{6+7=2, 6+8=3}`
+sufficiency + sharpness, all `sorry`-free); for an arbitrary single sum,
+necessity and the pump→sufficiency reduction are done; and for the whole
+`a + b < c` family the climb pump is now fully discharged symbolically
+(`climb_dneg`), leaving the descend pump (and the `a + b > c` case) as the
+remaining piece.** Exhaustive search over the adversarial `{6+7=2, 6+8=3}`
 (where no `1` ever exists) finds every in-range pump reachable, so they are *true*.
 
 ## Check it yourself
