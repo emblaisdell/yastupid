@@ -2,21 +2,25 @@
 
 A tiny static physics game built around the *Vine Fallacy*: **9 + 10 = 21**.
 
-You start with one ball and try to reach a single ball of a different number.
+You drop straight into a random, always‑solvable puzzle (no menus): start with one
+ball, end with a single ball showing the target.
 
 - **Tap** a ball to split it. Even → two halves; odd → the two nearest halves.
-  A **false‑RHS** value always false‑splits to its ordained pair (`21 → 9, 10`).
+  A **magic** value always false‑splits to its ordained pair (`21 → 9, 10`) —
+  these wear a dashed ring.
 - **Drag** from one ball to another to fire a proton beam that draws them
   together; on contact they **merge** into the sum — except the ordained
   **false pair** `{9,10}` which merges to `21`.
 
 Splits and merges conserve the total **except** at the false sum, which is how a
-puzzle is solvable at all.
+puzzle is solvable at all. Every generated puzzle has both endpoints in
+`[M, 99]` and `t ≡ s (mod g)`, so it is provably solvable.
 
 ## Modes
 
-- **Classic** — the single lie `9 + 10 = 21`.
-- **Advanced** — several "false sums" at once (e.g. `2 + 5 = 3`, `10 + 1 = 2`).
+- **Classic** — the single lie `9 + 10 = 21`  (`g=2`, `M=22`).
+- **Advanced** — three lies at once: `9 + 10 = 21`, `2 + 5 = 3`, `10 + 1 = 2`
+  (`g=1`, `M=22` — so any target works, not just same‑parity).
 
 ## The math
 

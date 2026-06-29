@@ -255,24 +255,31 @@ right but optimistic: $19\to21$ happens to work, yet $21\to23$ does not, so $22$
 is the honest guaranteed floor. Curated sub‑threshold puzzles such as the iconic
 $19\to21$ are still fine — they just aren't covered by the blanket guarantee.)
 
-**Advanced mode**, example $\{2+5=3,\ 10+1=2\}$:
+**Advanced mode** keeps the iconic lie and adds two more —
+$\{\,9+10=21,\ 2+5=3,\ 10+1=2\,\}$:
 $$
-H=\max(\max(7,3),\ \max(11,2))=11,\quad M=12,\quad g=\gcd(4,9)=1 .
+H=\max(\max(19,21),\max(7,3),\max(11,2))=21,\quad M=22,\quad
+g=\gcd(2,4,9)=1 .
 $$
-Because $g=1$, *every* $s,t\ge 12$ is solvable — no parity restriction. A sample
-solution $12\to13$ (net $+1=+9-4-4$): from $12$ false‑split a $2$ into $\{10,1\}$
-($+9\Rightarrow 21$), then twice false‑merge $\{2,5\}\mapsto 3$
-($-4\Rightarrow 17\Rightarrow 13$). Every total stays $>H=11$. $\checkmark$
+Because $g=1$, *every* $s,t\ge 22$ is solvable — no parity restriction. The extra
+lies are what kill parity: e.g. a net $+1$ via $+9-4-4$ — false‑split a $2$ into
+$\{10,1\}$ ($+9$), then twice false‑merge $\{2,5\}\mapsto 3$ ($-4$ each). Every
+total stays $>H=21$. $\checkmark$
+
+> **Aside (a smaller advanced set).** With just $\{2+5=3,\ 10+1=2\}$ one gets
+> $H=11,\ M=12,\ g=\gcd(4,9)=1$, so every $s,t\ge12$ is solvable — handy if you
+> want puzzles to range lower. The game ships the three‑lie set above so the
+> 9+10=21 gag is always present.
 
 ---
 
 ### Summary
 
-| Quantity | Meaning | Classic | Example Advanced |
+| Quantity | Meaning | Classic | Advanced (game) |
 |---|---|---|---|
 | $g=\gcd_i\lvert d_i\rvert$ | step size / required congruence | $2$ | $1$ |
-| $H=\max_i\max(a_i+b_i,c_i)$ | locking ceiling | $21$ | $11$ |
-| $M=H+1$ | **guaranteed solvable threshold** | $22$ | $12$ |
+| $H=\max_i\max(a_i+b_i,c_i)$ | locking ceiling | $21$ | $21$ |
+| $M=H+1$ | **guaranteed solvable threshold** | $22$ | $22$ |
 
 The congruence $g\mid(t-s)$ is necessary always (§2) and, once $s,t\ge M$,
 sufficient (§4); the bound $M=H+1$ is sharp (§5).
