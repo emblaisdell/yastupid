@@ -331,13 +331,29 @@ function toast(msg) {
 /* ------------------------------- popovers --------------------------------- */
 function show(id) { el(id).classList.remove('hidden'); }
 function hide(id) { el(id).classList.add('hidden'); }
+function classicHelp(st) {
+  return `<p><b>Goal.</b> Fuse and split until a single ball shows the target.</p>
+    <p><b>Tap</b> a ball to split it in half (odd numbers split into the two nearest halves).</p>
+    <p><b>Drag</b> one ball onto another to fire a beam that fuses them into their sum.</p>
+    <p>The one lie: <b>9 + 10 = 21</b>. A <b>21</b> tapped pops into <b>9</b> and <b>10</b>, and
+       dragging <b>9</b> onto <b>10</b> makes <b>21</b> (not 19). That tiny error is the only way
+       the total can change — and the whole point.</p>
+    <p class="rule">Targets share parity with the start and sit in [${st.M}, 99].</p>`;
+}
+function advancedHelp(st) {
+  return `<p><b>Goal.</b> Reach a single ball of the target — but now several lies run at once.</p>
+    <p>The <b>legend</b> along the bottom lists every false sum as balls (<i>a + b = c</i>). Tapping a
+       <b>c</b> splits it into its pair <b>a, b</b>; dragging <b>a</b> onto <b>b</b> fuses to <b>c</b>
+       (not a+b). Ordinary tap-to-halve and drag-to-add still apply to all other numbers.</p>
+    <p>Tap <b>+</b> in the legend to add a random lie, or <b>×</b> to remove one. Each change re-deals a
+       fresh puzzle — the reachable targets depend on which lies are in play.</p>
+    <p>Stacking lies shrinks their combined step to <b>g = ${st.g}</b>${st.g === 1 ? ' — so targets need not share parity' : ''}.</p>
+    <p class="rule">Step g = ${st.g}; targets sit in [${st.M}, 99], a multiple of ${st.g} from the start.</p>`;
+}
 function openMenu() {
   document.querySelectorAll('.seg-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
   const st = rulesetStats(currentSums());
-  el('ruleLine').innerHTML = mode === 'classic'
-    ? `Classic: one lie. Targets share parity and sit in <b>[${st.M}, 99]</b>.`
-    : `Advanced: ${advancedSums.length} false sum${advancedSums.length === 1 ? '' : 's'} (edit them on the board). `
-      + `Step <b>g = ${st.g}</b>, range <b>[${st.M}, 99]</b>.`;
+  el('helpBody').innerHTML = mode === 'classic' ? classicHelp(st) : advancedHelp(st);
   show('menu');
 }
 function hideMenu() { hide('menu'); }
@@ -413,9 +429,11 @@ el('againBtn').onclick = newRandomLevel;
 el('restartBtn').onclick = () => startLevel(config.s, config.t);
 document.querySelectorAll('.seg-btn').forEach(btn => {
   btn.onclick = () => {
-    if (mode === btn.dataset.mode) { hideMenu(); return; }
-    mode = btn.dataset.mode; localStorage.setItem('yastupid_mode', mode);
-    newRandomLevel();
+    if (mode !== btn.dataset.mode) {
+      mode = btn.dataset.mode; localStorage.setItem('yastupid_mode', mode);
+      newRandomLevel();            // deal a fresh puzzle in the new mode...
+    }
+    openMenu();                    // ...but keep the help open and refresh it
   };
 });
 

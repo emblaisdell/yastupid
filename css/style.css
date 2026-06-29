@@ -133,7 +133,7 @@ body::before{
 .x:active{transform:translateY(2px);}
 
 .title{margin:2px 0 0;text-align:center;font-size:40px;font-weight:900;letter-spacing:-.01em;
-  color:var(--blue-deep);text-shadow:2px 2px 0 #fff, 3px 3px 0 rgba(120,90,40,.35);}
+  color:var(--blue-deep);}
 .sub{text-align:center;color:var(--ink-soft);margin:4px 0 16px;font-size:14px;font-weight:600;}
 
 .seg{display:flex;gap:6px;background:#e9dcbd;border:2px solid var(--panel-edge);
