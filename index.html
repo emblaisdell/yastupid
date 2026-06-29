@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0b1020" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<title>Ya Stupid</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div id="app">
+  <canvas id="board"></canvas>
+
+  <!-- Top heads-up display -->
+  <header id="hud">
+    <button id="menuBtn" class="chip" aria-label="Levels">☰</button>
+    <div id="goal" class="goal">
+      <span class="goal-label">Make one ball</span>
+      <span id="targetVal" class="goal-target">—</span>
+    </div>
+    <button id="resetBtn" class="chip" aria-label="Reset level">↺</button>
+  </header>
+
+  <!-- Bottom status -->
+  <footer id="status">
+    <div class="stat"><span class="stat-num" id="ballCount">1</span><span class="stat-lab">balls</span></div>
+    <div class="stat"><span class="stat-num" id="sumVal">0</span><span class="stat-lab">sum</span></div>
+    <div class="stat"><span class="stat-num" id="moveVal">0</span><span class="stat-lab">moves</span></div>
+  </footer>
+
+  <!-- Hint pill -->
+  <div id="hint" class="hint">Tap a ball to split it · Drag between balls to fuse them</div>
+
+  <!-- Level / menu overlay -->
+  <div id="menu" class="overlay hidden">
+    <div class="sheet">
+      <h1 class="logo">Ya&nbsp;Stupid</h1>
+      <p class="tag">9&nbsp;+&nbsp;10&nbsp;=&nbsp;21. Obviously. Now go fuse some balls.</p>
+
+      <div class="seg" id="modeSeg">
+        <button class="seg-btn active" data-mode="classic">Classic</button>
+        <button class="seg-btn" data-mode="advanced">Advanced</button>
+      </div>
+
+      <div id="levelList" class="levels"></div>
+
+      <div id="customBox" class="custom">
+        <div class="custom-row">
+          <label>Start <input id="customStart" type="number" min="1" value="24" /></label>
+          <label>Target <input id="customTarget" type="number" min="1" value="30" /></label>
+        </div>
+        <p id="customNote" class="note"></p>
+        <button id="playCustom" class="play">Play custom</button>
+      </div>
+
+      <p class="rule" id="ruleLine"></p>
+    </div>
+  </div>
+
+  <!-- Win overlay -->
+  <div id="win" class="overlay hidden">
+    <div class="sheet win-sheet">
+      <div class="burst">🎉</div>
+      <h2>Ya did it!</h2>
+      <p id="winLine"></p>
+      <div class="win-actions">
+        <button id="nextBtn" class="play">Next level</button>
+        <button id="winMenuBtn" class="chip wide">Levels</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/game.js"></script>
+</body>
+</html>
