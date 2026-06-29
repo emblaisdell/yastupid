@@ -6,8 +6,7 @@ You drop straight into a random, always‑solvable puzzle (no menus): start with
 ball, end with a single ball showing the target.
 
 - **Tap** a ball to split it. Even → two halves; odd → the two nearest halves.
-  A **magic** value always false‑splits to its ordained pair (`21 → 9, 10`) —
-  these wear a dashed ring.
+  A **magic** value always false‑splits to its ordained pair (`21 → 9, 10`).
 - **Drag** from one ball to another to fire a proton beam that draws them
   together; on contact they **merge** into the sum — except the ordained
   **false pair** `{9,10}` which merges to `21`.
