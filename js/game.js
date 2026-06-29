@@ -54,7 +54,8 @@ const BALL_R = 30;                                // nominal size (camera defaul
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 let W = 0, VH = 0, DPR = 1;
-const TOP_MARGIN = 96, BOT_MARGIN = 58;
+const TOP_MARGIN = 118;
+let BOT_MARGIN = 58;
 function resize() {
   DPR = Math.min(window.devicePixelRatio || 1, 2.5);
   W = window.innerWidth; VH = window.innerHeight;
@@ -82,15 +83,25 @@ function makeBall(value, x, y, vx = 0, vy = 0) {
 function ballById(id) { return balls.find(b => b.id === id); }
 let mode = localStorage.getItem('yastupid_mode') || 'classic';
 
+// Advanced mode's false sums are editable at runtime (add/remove); persisted.
+function loadAdv() {
+  try { const j = JSON.parse(localStorage.getItem('yastupid_adv')); if (Array.isArray(j) && j.length) return j; } catch (_) {}
+  return RULESETS.advanced.falseSums.map(f => ({ ...f }));
+}
+let advancedSums = loadAdv();
+function saveAdv() { localStorage.setItem('yastupid_adv', JSON.stringify(advancedSums)); }
+function currentSums() { return mode === 'classic' ? RULESETS.classic.falseSums : advancedSums; }
+
 function startLevel(s, t) {
-  const fs = RULESETS[mode].falseSums;
+  const fs = currentSums();
   config = { fs, stats: rulesetStats(fs), s, t, mode };
   balls = []; beams = []; moves = 0; won = false; nextId = 1;
   zoom = 1;
+  BOT_MARGIN = (mode === 'advanced') ? 104 : 58;
   balls.push(makeBall(s, 0, 0));
-  updateHud(); hideMenu(); hide('win');
+  updateHud(); renderLegend(); hideMenu(); hide('win');
 }
-function newRandomLevel() { const { s, t } = generateLevel(RULESETS[mode].falseSums); startLevel(s, t); }
+function newRandomLevel() { const { s, t } = generateLevel(currentSums()); startLevel(s, t); }
 
 /* ------------------------------- physics ---------------------------------- */
 const GRAV = 0.9;        // gentle drift toward the centre (keeps them loosely gathered)
@@ -322,13 +333,72 @@ function show(id) { el(id).classList.remove('hidden'); }
 function hide(id) { el(id).classList.add('hidden'); }
 function openMenu() {
   document.querySelectorAll('.seg-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
-  const st = rulesetStats(RULESETS[mode].falseSums);
+  const st = rulesetStats(currentSums());
   el('ruleLine').innerHTML = mode === 'classic'
     ? `Classic: one lie. Targets share parity and sit in <b>[${st.M}, 99]</b>.`
-    : `Advanced: three lies (incl. 9+10=21). Step <b>g = ${st.g}</b>, range <b>[${st.M}, 99]</b>.`;
+    : `Advanced: ${advancedSums.length} false sum${advancedSums.length === 1 ? '' : 's'} (edit them on the board). `
+      + `Step <b>g = ${st.g}</b>, range <b>[${st.M}, 99]</b>.`;
   show('menu');
 }
 function hideMenu() { hide('menu'); }
+
+/* ----------------------- Advanced false-sum legend ------------------------ */
+function miniBall(v) {
+  const b = document.createElement('span'); b.className = 'lg-ball'; b.textContent = v;
+  const h = valueHue(v);
+  b.style.background = `radial-gradient(circle at 34% 30%, hsl(${h},92%,82%), hsl(${h},72%,46%))`;
+  b.style.borderColor = `hsl(${h},55%,30%)`;
+  return b;
+}
+function sym(s) { const e = document.createElement('span'); e.className = 'lg-sym'; e.textContent = s; return e; }
+
+function renderLegend() {
+  const wrap = el('legend');
+  if (mode !== 'advanced') { wrap.classList.add('hidden'); wrap.innerHTML = ''; return; }
+  wrap.classList.remove('hidden');
+  wrap.innerHTML = '';
+  advancedSums.forEach((f, i) => {
+    const chip = document.createElement('div'); chip.className = 'lg-chip';
+    chip.append(miniBall(f.a), sym('+'), miniBall(f.b), sym('='), miniBall(f.c));
+    const rm = document.createElement('button'); rm.className = 'lg-x'; rm.textContent = '×';
+    rm.title = 'remove this false sum'; rm.disabled = advancedSums.length <= 1;
+    rm.onclick = () => removeSum(i);
+    chip.append(rm);
+    wrap.append(chip);
+  });
+  const add = document.createElement('button'); add.className = 'lg-add'; add.textContent = '+';
+  add.title = 'add a random false sum'; add.disabled = advancedSums.length >= 6;
+  add.onclick = addRandomSum;
+  wrap.append(add);
+}
+
+function randomFalseSum(existing) {
+  const usedC = new Set(existing.map(f => f.c));
+  const pk = f => [Math.min(f.a, f.b), Math.max(f.a, f.b)].join(',');
+  const usedP = new Set(existing.map(pk));
+  for (let k = 0; k < 300; k++) {
+    const a = randInt(1, 12), b = randInt(1, 12);
+    const off = (Math.random() < 0.5 ? -1 : 1) * randInt(1, 9);
+    const c = a + b + off;
+    if (off === 0 || c < 1) continue;
+    if (usedC.has(c)) continue;
+    if (usedP.has(pk({ a, b }))) continue;
+    return { a, b, c };
+  }
+  return null;
+}
+function addRandomSum() {
+  if (advancedSums.length >= 6) return;
+  const f = randomFalseSum(advancedSums);
+  if (!f) { toast('No fresh false sum found — remove one first.'); return; }
+  advancedSums.push(f); saveAdv();
+  newRandomLevel();            // any change generates a new level
+}
+function removeSum(i) {
+  if (advancedSums.length <= 1) return;
+  advancedSums.splice(i, 1); saveAdv();
+  newRandomLevel();
+}
 function showWin() {
   el('winLine').textContent = `${config.s} → ${config.t} in ${moves} move${moves === 1 ? '' : 's'}.`;
   show('win');
