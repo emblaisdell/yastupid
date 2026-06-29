@@ -73,10 +73,14 @@ way, giving a complete proof per instance.
 **Classic mode is fully done**, and the general single-sum case is reduced to its
 base interval (above). The remaining open core, for the *unconditional symbolic*
 theorem, is the **base carve**: forming the trigger (`{a,b}` or a `c`) on `[M,2H]`
-for symbolic `a,b,c`, including the `c·2^k` **stuck values** (e.g. `2c`, whose only
-normal split is `{c,c}`) that need a total-dipping route — the symbolic analogue of
-Classic's `42`. This is uniform but intricate (build-from-units with the `{a,b}`
-forbidden-pair edges, plus the stuck dips) and most naturally lives over Mathlib.
+for symbolic `a,b,c`. One half of it is done: **`gather`** builds any needed value
+from units (and is `sorry`-free). The obstacle is its dual, **scatter** (peeling
+units *out* of a ball): the recursion must escape the locked value `c` when it
+appears, and — fatally for a sum-preserving scatter — the `c·2^k` **stuck values**
+(e.g. `2c`, whose only normal split is `{c,c}`) cannot be scattered at fixed total
+at all. They need a total-dipping detour (the symbolic analogue of Classic's `42`)
+which recursively needs to peel a unit out of a `c` — turtles all the way down.
+This is uniform but genuinely intricate, and most naturally lives over Mathlib.
 
 Equivalently phrased — the two one-step pumps for an **arbitrary** configuration:
 

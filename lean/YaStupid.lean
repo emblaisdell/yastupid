@@ -1118,6 +1118,31 @@ For an *arbitrary* single false sum `[⟨a,b,c⟩]` (`a+b ≠ c`), the framing r
 halving recursion reduce the two pumps to a bounded base interval, and the general
 `sufficiency_of_pumps` then yields full sufficiency.  All `sorry`-free. -/
 
+/-- Building block for the (still open) base carve: merge `k` ones into a single
+    ball `[k]`.  Safe — never forms the forbidden pair `{a,b}` — whenever
+    `k ≤ max a b`, which covers every value we need to build (`a` and `b`).
+    Its dual, *scatter* (peeling units out of a ball), is the remaining obstacle:
+    it must escape the locked value `c` inside the recursion and handle the
+    `c·2^k` stuck values, which cannot be scattered sum-preservingly. -/
+theorem gather (a b c : Nat) :
+    ∀ k, 1 ≤ k → k ≤ max a b → Reach [⟨a,b,c⟩] (List.replicate k 1) [k] := by
+  intro k
+  induction k with
+  | zero => intro h _; omega
+  | succ k ih =>
+    intro _ hk
+    rcases Nat.eq_zero_or_pos k with hk0 | hkpos
+    · subst hk0; exact Reach.refl _
+    · have prev := ih hkpos (by omega)
+      have hcc : ∀ f ∈ ([⟨a,b,c⟩] : Config),
+          ¬ ((f.a = 1 ∧ f.b = k) ∨ (f.a = k ∧ f.b = 1)) := by
+        simp only [List.mem_singleton, forall_eq]; omega
+      have step2 : Reach [⟨a,b,c⟩] [1, k] [k + 1] := by
+        have hm := reach_move [] (Local.nmerge 1 k hcc) (List.Perm.refl _) (Reach.refl _)
+        have e : 1 + k = k + 1 := by omega
+        rwa [e] at hm
+      exact reach_trans (reach_frame_left [1] prev) step2
+
 theorem climb_of_base (a b c : Nat) (ha : 1 ≤ a) (hb : 1 ≤ b) (hc : 1 ≤ c) (hne : a + b ≠ c)
     (base : ∀ n, Mval [⟨a,b,c⟩] ≤ n → n ≤ 2 * Hnat [⟨a,b,c⟩] →
       Reach [⟨a,b,c⟩] [n] [n + gnat [⟨a,b,c⟩]]) :
