@@ -1112,6 +1112,102 @@ theorem classic_sufficiency {s t : Nat} (hs : 22 ≤ s) (ht : 22 ≤ t)
     rw [h2]; exact hg
   exact sufficiency_of_pumps hclimb hdescend (by rw [hMc]; exact hs) (by rw [hMc]; exact ht) hgz
 
+/-! ### Toward the symbolic single-sum theorem
+
+For an *arbitrary* single false sum `[⟨a,b,c⟩]` (`a+b ≠ c`), the framing rule plus a
+halving recursion reduce the two pumps to a bounded base interval, and the general
+`sufficiency_of_pumps` then yields full sufficiency.  All `sorry`-free. -/
+
+theorem climb_of_base (a b c : Nat) (ha : 1 ≤ a) (hb : 1 ≤ b) (hc : 1 ≤ c) (hne : a + b ≠ c)
+    (base : ∀ n, Mval [⟨a,b,c⟩] ≤ n → n ≤ 2 * Hnat [⟨a,b,c⟩] →
+      Reach [⟨a,b,c⟩] [n] [n + gnat [⟨a,b,c⟩]]) :
+    ∀ n, Mval [⟨a,b,c⟩] ≤ n → Reach [⟨a,b,c⟩] [n] [n + gnat [⟨a,b,c⟩]] := by
+  have hHab : a + b ≤ Hnat [⟨a,b,c⟩] := by show a + b ≤ max (max (a+b) c) 0; omega
+  have hHc  : c ≤ Hnat [⟨a,b,c⟩] := by show c ≤ max (max (a+b) c) 0; omega
+  have hMdef : Mval [⟨a,b,c⟩] = Hnat [⟨a,b,c⟩] + 1 := rfl
+  intro n
+  induction n using Nat.strongRecOn with
+  | ind n ih =>
+    intro hn
+    by_cases hbase : n ≤ 2 * Hnat [⟨a,b,c⟩]
+    · exact base n hn hbase
+    · have hH2 : 2 * Hnat [⟨a,b,c⟩] < n := by omega
+      have hMle : Mval [⟨a,b,c⟩] ≤ (n+1)/2 := by omega
+      have hlt : (n+1)/2 < n := by omega
+      have hcl := ih ((n+1)/2) hlt hMle
+      have hsp : Reach [⟨a,b,c⟩] [n] [n/2, (n+1)/2] :=
+        reach_move [] (Local.nsplit n (by omega)
+          (by simp only [List.mem_singleton, forall_eq]; omega))
+          (List.Perm.refl _) (Reach.refl _)
+      have hfr := reach_frame_left [n/2] hcl
+      have hmg : Reach [⟨a,b,c⟩] [n/2, (n+1)/2 + gnat [⟨a,b,c⟩]] [n + gnat [⟨a,b,c⟩]] := by
+        have hcc : ∀ f ∈ ([⟨a,b,c⟩] : Config),
+            ¬ ((f.a = n/2 ∧ f.b = (n+1)/2 + gnat [⟨a,b,c⟩]) ∨
+               (f.a = (n+1)/2 + gnat [⟨a,b,c⟩] ∧ f.b = n/2)) := by
+          simp only [List.mem_singleton, forall_eq]; omega
+        have hm := reach_move [] (Local.nmerge (n/2) ((n+1)/2 + gnat [⟨a,b,c⟩]) hcc)
+          (List.Perm.refl _) (Reach.refl _)
+        have e : n/2 + ((n+1)/2 + gnat [⟨a,b,c⟩]) = n + gnat [⟨a,b,c⟩] := by omega
+        rwa [e] at hm
+      exact reach_trans hsp (reach_trans hfr hmg)
+
+
+theorem descend_of_base (a b c : Nat) (ha : 1 ≤ a) (hb : 1 ≤ b) (hc : 1 ≤ c) (hne : a + b ≠ c)
+    (base : ∀ n, Mval [⟨a,b,c⟩] ≤ n → n ≤ 2 * Hnat [⟨a,b,c⟩] + gnat [⟨a,b,c⟩] →
+      Reach [⟨a,b,c⟩] [n + gnat [⟨a,b,c⟩]] [n]) :
+    ∀ n, Mval [⟨a,b,c⟩] ≤ n → Reach [⟨a,b,c⟩] [n + gnat [⟨a,b,c⟩]] [n] := by
+  have hHab : a + b ≤ Hnat [⟨a,b,c⟩] := by show a + b ≤ max (max (a+b) c) 0; omega
+  have hHc  : c ≤ Hnat [⟨a,b,c⟩] := by show c ≤ max (max (a+b) c) 0; omega
+  have hMdef : Mval [⟨a,b,c⟩] = Hnat [⟨a,b,c⟩] + 1 := rfl
+  intro n
+  induction n using Nat.strongRecOn with
+  | ind n ih =>
+    intro hn
+    by_cases hbase : n ≤ 2 * Hnat [⟨a,b,c⟩] + gnat [⟨a,b,c⟩]
+    · exact base n hn hbase
+    · have hH2 : 2 * Hnat [⟨a,b,c⟩] + gnat [⟨a,b,c⟩] < n := by omega
+      have hsp : Reach [⟨a,b,c⟩] [n + gnat [⟨a,b,c⟩]]
+                 [(n + gnat [⟨a,b,c⟩])/2, (n + gnat [⟨a,b,c⟩] + 1)/2] :=
+        reach_move [] (Local.nsplit (n + gnat [⟨a,b,c⟩]) (by omega)
+          (by simp only [List.mem_singleton, forall_eq]; omega))
+          (List.Perm.refl _) (Reach.refl _)
+      have hk : (n + gnat [⟨a,b,c⟩] + 1)/2 - gnat [⟨a,b,c⟩] + gnat [⟨a,b,c⟩]
+                = (n + gnat [⟨a,b,c⟩] + 1)/2 := by omega
+      have hMle : Mval [⟨a,b,c⟩] ≤ (n + gnat [⟨a,b,c⟩] + 1)/2 - gnat [⟨a,b,c⟩] := by omega
+      have hlt : (n + gnat [⟨a,b,c⟩] + 1)/2 - gnat [⟨a,b,c⟩] < n := by omega
+      have hcl0 := ih ((n + gnat [⟨a,b,c⟩] + 1)/2 - gnat [⟨a,b,c⟩]) hlt hMle
+      rw [hk] at hcl0
+      have hfr := reach_frame_left [(n + gnat [⟨a,b,c⟩])/2] hcl0
+      have hmg : Reach [⟨a,b,c⟩]
+          [(n + gnat [⟨a,b,c⟩])/2, (n + gnat [⟨a,b,c⟩] + 1)/2 - gnat [⟨a,b,c⟩]] [n] := by
+        have hcc : ∀ f ∈ ([⟨a,b,c⟩] : Config),
+            ¬ ((f.a = (n + gnat [⟨a,b,c⟩])/2 ∧
+                  f.b = (n + gnat [⟨a,b,c⟩] + 1)/2 - gnat [⟨a,b,c⟩]) ∨
+               (f.a = (n + gnat [⟨a,b,c⟩] + 1)/2 - gnat [⟨a,b,c⟩] ∧
+                  f.b = (n + gnat [⟨a,b,c⟩])/2)) := by
+          simp only [List.mem_singleton, forall_eq]; omega
+        have hm := reach_move [] (Local.nmerge ((n + gnat [⟨a,b,c⟩])/2)
+          ((n + gnat [⟨a,b,c⟩] + 1)/2 - gnat [⟨a,b,c⟩]) hcc) (List.Perm.refl _) (Reach.refl _)
+        have e : (n + gnat [⟨a,b,c⟩])/2 + ((n + gnat [⟨a,b,c⟩] + 1)/2 - gnat [⟨a,b,c⟩]) = n := by omega
+        rwa [e] at hm
+      exact reach_trans hsp (reach_trans hfr hmg)
+
+/-- **Symbolic sufficiency, reduced to base cases.**  For *any* single false sum
+    `{a,b,c}` (a+b ≠ c), if the climb/descend pumps hold on the bounded base
+    interval, then full sufficiency holds: every `s,t ≥ M` with `g ∣ (t−s)`. -/
+theorem single_sufficiency_of_base (a b c : Nat)
+    (ha : 1 ≤ a) (hb : 1 ≤ b) (hc : 1 ≤ c) (hne : a + b ≠ c)
+    (baseC : ∀ n, Mval [⟨a,b,c⟩] ≤ n → n ≤ 2 * Hnat [⟨a,b,c⟩] →
+      Reach [⟨a,b,c⟩] [n] [n + gnat [⟨a,b,c⟩]])
+    (baseD : ∀ n, Mval [⟨a,b,c⟩] ≤ n → n ≤ 2 * Hnat [⟨a,b,c⟩] + gnat [⟨a,b,c⟩] →
+      Reach [⟨a,b,c⟩] [n + gnat [⟨a,b,c⟩]] [n]) :
+    ∀ s t, Mval [⟨a,b,c⟩] ≤ s → Mval [⟨a,b,c⟩] ≤ t →
+      gz [⟨a,b,c⟩] ∣ ((t : Int) - s) → Reach [⟨a,b,c⟩] [s] [t] :=
+  fun s t hs ht hg =>
+    sufficiency_of_pumps (climb_of_base a b c ha hb hc hne baseC)
+      (descend_of_base a b c ha hb hc hne baseD) hs ht hg
+
+
 end YaStupid
 
 -- Trust check: these print the axiom dependencies (should be the standard
@@ -1123,3 +1219,4 @@ end YaStupid
 #print axioms YaStupid.sufficiency_of_pumps
 #print axioms YaStupid.classic_42_to_44
 #print axioms YaStupid.classic_sufficiency
+#print axioms YaStupid.single_sufficiency_of_base
