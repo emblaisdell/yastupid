@@ -32,8 +32,20 @@ reflexive/transitive closure `Reach`.
   two one-step pumps hold for every `n ≥ M` (climb `[n] → [n+g]` and descend
   `[n+g] → [n]`), **then** every pair `s,t ≥ M` with `g ∣ (t − s)` is solvable.
   Proved via `reach_up_k` / `reach_down_k` (iterate a pump `k` times) and the
-  `g ∣ (t−s)` arithmetic. This is the whole sufficiency argument *except* the two
-  pumps themselves.
+  `g ∣ (t−s)` arithmetic.
+- **`classic_sufficiency`** — **full sufficiency for Classic mode**, no `sorry`:
+  ```
+  ∀ s t, 22 ≤ s → 22 ≤ t → (2 : ℤ) ∣ (t − s) → Reach classic [s] [t]
+  ```
+  Together with `reach_congr` (necessity) and `classic_trap` (sharpness), this
+  *completely characterizes* Classic solvability: `[s] → [t]` iff `s,t ≥ 22` and
+  `2 ∣ (t−s)`, with `22` sharp. The proof discharges the two Classic pumps via:
+  - `reach_frame` / `reach_frame_left` — the frame rule (act on part of the board);
+  - `climb_all` / `descD` — a halving recursion (`[n]` for `n ≥ 44` reduces to
+    `⌈n/2⌉`, framed and re-merged), bottoming out at the finite base ranges;
+  - `baseClimb` (n∈[22,43]) and `baseDesc` (m∈[24,46]) — explicit `Step`-by-`Step`
+    witnesses for the finitely many base cases (BFS-found, `decide`-checked perms),
+    including the genuinely hard `bc_42 = classic_42_to_44`.
 
 All theorems are checked to depend only on the standard axioms
 `[propext, Classical.choice, Quot.sound]` — **no `sorryAx`**, so there are no
@@ -42,30 +54,27 @@ every build.
 
 ## What is *not* (yet) mechanized
 
-After `sufficiency_of_pumps`, the **entire** remaining gap is the two one-step
-pump lemmas:
+**Classic mode is fully done.** What remains open is the two one-step pumps for an
+**arbitrary** configuration:
 
 ```
 climb   : ∀ n, Mval cfg ≤ n → Reach cfg [n] [n + gnat cfg]
 descend : ∀ n, Mval cfg ≤ n → Reach cfg [n + gnat cfg] [n]
 ```
 
-Discharging them is exactly trigger formation (§4.1 of the note) and it is
-genuinely subtle — *not* a routine carve. The sharpest illustration, in Classic:
-the single ball `42` has only the normal split `42 → {21,21}` (both halves are the
-locked RHS), so `{9,10}` cannot be assembled at total `42`; reaching `44` must dip
-the total through a false move and climb back. A correct, uniform construction of
-the pumps for an arbitrary configuration is therefore a real piece of work, most
-naturally done over Mathlib (whose prebuilt cache is unreachable from the sandbox
-this was developed in — the toolchain itself had to be side-loaded from GitHub
-release assets because the Lean CDN was blocked).
+`sufficiency_of_pumps` already reduces *general* sufficiency to these. For Classic
+they are discharged above (halving recursion + finite base cases). For a general
+config the same recursion idea should work, but the base set is no longer a fixed
+small interval and the carving interacts with arbitrarily many locked values and
+forbidden pairs — so it wants Mathlib-level `List`/`Multiset` automation (whose
+cache is unreachable from the sandbox this was developed in; the toolchain itself
+had to be side-loaded from GitHub release assets because the Lean CDN was blocked).
 
-So the present status is: **necessity, sharpness, the pump→sufficiency reduction,
-and concrete sufficiency witnesses are machine-checked; the two pumps are the lone
-remaining lemmas.** An exhaustive search over the adversarial `{6+7=2, 6+8=3}`
-configuration (where no `1` ever exists) and over the Classic `42` case finds every
-in-range pump reachable, so the pumps are *true* — they are simply not yet
-mechanized.
+So the present status: **Classic is completely characterized (necessity +
+sufficiency + sharpness, all `sorry`-free); for arbitrary configurations,
+necessity and the pump→sufficiency reduction are done, and the two general pumps
+are the remaining piece.** Exhaustive search over the adversarial `{6+7=2, 6+8=3}`
+(where no `1` ever exists) finds every in-range pump reachable, so they are *true*.
 
 ## Check it yourself
 

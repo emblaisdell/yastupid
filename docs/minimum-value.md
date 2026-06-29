@@ -325,19 +325,25 @@ Lean 4.31.0) in [`../lean/YaStupid.lean`](../lean/YaStupid.lean):
 
 - **`sufficiency_of_pumps`** mechanizes §4.3 — the *reduction*: for any
   configuration, **if** the one‑step climb `[n]→[n+g]` and descend `[n+g]→[n]`
-  hold for all `n ≥ M`, **then** every congruent pair `s,t ≥ M` is solvable
-  (via `reach_up_k`/`reach_down_k`, iterating a pump $k=\tfrac{|t-s|}{g}$ times).
+  hold for all `n ≥ M`, **then** every congruent pair `s,t ≥ M` is solvable.
+- **`classic_sufficiency`** mechanizes **full sufficiency for Classic mode**:
+  $\forall s,t\ge 22$ with $2\mid(t-s)$, $[s]\to[t]$. With `reach_congr` and
+  `classic_trap` this gives the *complete* Classic characterization — solvable iff
+  $s,t\ge 22$ and $2\mid(t-s)$, with $22$ sharp. The two Classic pumps are
+  discharged by a frame rule (`reach_frame`/`reach_frame_left`), a halving
+  recursion (`climb_all`/`descD`: $n\ge44$ reduces to $\lceil n/2\rceil$, framed
+  and re‑merged), and explicit `Step`‑witnesses for the finite base ranges
+  ($n\in[22,43]$, $m\in[24,46]$) — including the hard $42\to44$, whose route dips
+  to $40$ and re‑creates $\{9,10\}$ by normal‑splitting a $19$.
 
 All of the above are confirmed to use no `sorry` (axioms: `propext,
 Classical.choice, Quot.sound`).
 
-After the reduction, the **entire** remaining gap is the two one‑step pumps —
-i.e. Lemma 1 (trigger formation, §4.1). These are genuinely subtle, *not* routine
-carves: in Classic the single ball $42$ splits only as $42\to\{21,21\}$ (both
-halves locked), so $\{9,10\}$ cannot be formed at total $42$ and reaching $44$ must
-dip the total through a false move and climb back. A uniform construction for an
-arbitrary configuration is a real undertaking, most naturally done over Mathlib
-(whose prebuilt cache is unreachable from this sandbox). The exhaustive search over
-the adversarial $\{6+7=2,\,6+8=3\}$ *and* over the Classic $42$ case finds every
-in‑range pump reachable, so the pumps are **true** — just not yet mechanized.
-See [`../lean/README.md`](../lean/README.md) for scope and how to re‑check.
+The **one** remaining open piece is the two one‑step pumps for an *arbitrary*
+configuration (the general case of §4.1). `sufficiency_of_pumps` already reduces
+general sufficiency to them; for Classic they are fully proved as above. For a
+general config the same halving idea applies, but the finite base set and the
+carving's interaction with arbitrarily many locked values/forbidden pairs want
+Mathlib‑level automation (whose cache is unreachable from this sandbox). Exhaustive
+search over the adversarial $\{6+7=2,\,6+8=3\}$ finds every in‑range pump
+reachable, so they are **true**. See [`../lean/README.md`](../lean/README.md).

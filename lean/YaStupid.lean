@@ -409,6 +409,709 @@ theorem sufficiency_of_pumps {cfg : Config}
     have hr := reach_down_k descend k t ht
     rwa [e] at hr
 
+
+theorem reach_frame {cfg : Config} {a b : List Nat} (r : List Nat) (h : Reach cfg a b) :
+    Reach cfg (a ++ r) (b ++ r) := by
+  induction h with
+  | refl s => exact Reach.refl _
+  | @step s t u hst hr ih =>
+    obtain ⟨ain, aout, rest, hl, hps, hpt⟩ := hst
+    have p1 : (s ++ r).Perm (ain ++ (rest ++ r)) := by
+      have h2 := hps.append_right r; rwa [List.append_assoc] at h2
+    have p2 : (t ++ r).Perm (aout ++ (rest ++ r)) := by
+      have h2 := hpt.append_right r; rwa [List.append_assoc] at h2
+    exact Reach.step ⟨ain, aout, rest ++ r, hl, p1, p2⟩ ih
+
+theorem reach_frame_left {cfg : Config} {a b : List Nat} (r : List Nat) (h : Reach cfg a b) :
+    Reach cfg (r ++ a) (r ++ b) := by
+  induction h with
+  | refl s => exact Reach.refl _
+  | @step s t u hst hr ih =>
+    obtain ⟨ain, aout, rest, hl, hps, hpt⟩ := hst
+    have p1 : (r ++ s).Perm (ain ++ (r ++ rest)) := by
+      have h2 := hps.append_left r
+      have h3 : (r ++ (ain ++ rest)).Perm (ain ++ (r ++ rest)) := by
+        rw [← List.append_assoc, ← List.append_assoc]; exact List.perm_append_comm.append_right rest
+      exact h2.trans h3
+    have p2 : (r ++ t).Perm (aout ++ (r ++ rest)) := by
+      have h2 := hpt.append_left r
+      have h3 : (r ++ (aout ++ rest)).Perm (aout ++ (r ++ rest)) := by
+        rw [← List.append_assoc, ← List.append_assoc]; exact List.perm_append_comm.append_right rest
+      exact h2.trans h3
+    exact Reach.step ⟨ain, aout, r ++ rest, hl, p1, p2⟩ ih
+
+theorem bc_22 : Reach classic [22] [24] :=
+  reach_move [] (Local.nsplit 22 (by decide) (by decide)) (by decide) <|
+  reach_move [11] (Local.nsplit 11 (by decide) (by decide)) (by decide) <|
+  reach_move [6, 11] (Local.nsplit 5 (by decide) (by decide)) (by decide) <|
+  reach_move [3, 11] (Local.nmerge 2 6 (by decide)) (by decide) <|
+  reach_move [3] (Local.nmerge 8 11 (by decide)) (by decide) <|
+  reach_move [3] (Local.nsplit 19 (by decide) (by decide)) (by decide) <|
+  reach_move [3] (Local.fmerge ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 3 21 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bc_23 : Reach classic [23] [25] :=
+  reach_move [] (Local.nsplit 23 (by decide) (by decide)) (by decide) <|
+  reach_move [12] (Local.nsplit 11 (by decide) (by decide)) (by decide) <|
+  reach_move [6] (Local.nmerge 5 12 (by decide)) (by decide) <|
+  reach_move [6] (Local.nsplit 17 (by decide) (by decide)) (by decide) <|
+  reach_move [6, 9] (Local.nsplit 8 (by decide) (by decide)) (by decide) <|
+  reach_move [4, 9] (Local.nmerge 4 6 (by decide)) (by decide) <|
+  reach_move [4] (Local.fmerge ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 4 21 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bc_24 : Reach classic [24] [26] :=
+  reach_move [] (Local.nsplit 24 (by decide) (by decide)) (by decide) <|
+  reach_move [12] (Local.nsplit 12 (by decide) (by decide)) (by decide) <|
+  reach_move [6] (Local.nmerge 6 12 (by decide)) (by decide) <|
+  reach_move [6] (Local.nsplit 18 (by decide) (by decide)) (by decide) <|
+  reach_move [6, 9] (Local.nsplit 9 (by decide) (by decide)) (by decide) <|
+  reach_move [5, 9] (Local.nmerge 4 6 (by decide)) (by decide) <|
+  reach_move [5] (Local.fmerge ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 5 21 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bc_25 : Reach classic [25] [27] :=
+  reach_move [] (Local.nsplit 25 (by decide) (by decide)) (by decide) <|
+  reach_move [13] (Local.nsplit 12 (by decide) (by decide)) (by decide) <|
+  reach_move [6] (Local.nmerge 6 13 (by decide)) (by decide) <|
+  reach_move [6] (Local.nsplit 19 (by decide) (by decide)) (by decide) <|
+  reach_move [6] (Local.fmerge ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 6 21 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bc_26 : Reach classic [26] [28] :=
+  reach_move [] (Local.nsplit 26 (by decide) (by decide)) (by decide) <|
+  reach_move [13] (Local.nsplit 13 (by decide) (by decide)) (by decide) <|
+  reach_move [7] (Local.nmerge 6 13 (by decide)) (by decide) <|
+  reach_move [7] (Local.nsplit 19 (by decide) (by decide)) (by decide) <|
+  reach_move [7] (Local.fmerge ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 7 21 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bc_27 : Reach classic [27] [29] :=
+  reach_move [] (Local.nsplit 27 (by decide) (by decide)) (by decide) <|
+  reach_move [14] (Local.nsplit 13 (by decide) (by decide)) (by decide) <|
+  reach_move [7, 14] (Local.nsplit 6 (by decide) (by decide)) (by decide) <|
+  reach_move [3, 14] (Local.nmerge 3 7 (by decide)) (by decide) <|
+  reach_move [10] (Local.nmerge 3 14 (by decide)) (by decide) <|
+  reach_move [10] (Local.nsplit 17 (by decide) (by decide)) (by decide) <|
+  reach_move [8] (Local.fmerge ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 8 21 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bc_28 : Reach classic [28] [30] :=
+  reach_move [] (Local.nsplit 28 (by decide) (by decide)) (by decide) <|
+  reach_move [14] (Local.nsplit 14 (by decide) (by decide)) (by decide) <|
+  reach_move [7, 14] (Local.nsplit 7 (by decide) (by decide)) (by decide) <|
+  reach_move [4, 14] (Local.nmerge 3 7 (by decide)) (by decide) <|
+  reach_move [10] (Local.nmerge 4 14 (by decide)) (by decide) <|
+  reach_move [10] (Local.nsplit 18 (by decide) (by decide)) (by decide) <|
+  reach_move [9] (Local.fmerge ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 9 21 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bc_29 : Reach classic [29] [31] :=
+  reach_move [] (Local.nsplit 29 (by decide) (by decide)) (by decide) <|
+  reach_move [15] (Local.nsplit 14 (by decide) (by decide)) (by decide) <|
+  reach_move [7, 15] (Local.nsplit 7 (by decide) (by decide)) (by decide) <|
+  reach_move [4, 15] (Local.nmerge 3 7 (by decide)) (by decide) <|
+  reach_move [10] (Local.nmerge 4 15 (by decide)) (by decide) <|
+  reach_move [10] (Local.nsplit 19 (by decide) (by decide)) (by decide) <|
+  reach_move [10] (Local.fmerge ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 10 21 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bc_30 : Reach classic [30] [32] :=
+  reach_move [] (Local.nsplit 30 (by decide) (by decide)) (by decide) <|
+  reach_move [15] (Local.nsplit 15 (by decide) (by decide)) (by decide) <|
+  reach_move [8, 15] (Local.nsplit 7 (by decide) (by decide)) (by decide) <|
+  reach_move [4, 15] (Local.nmerge 3 8 (by decide)) (by decide) <|
+  reach_move [11] (Local.nmerge 4 15 (by decide)) (by decide) <|
+  reach_move [11] (Local.nsplit 19 (by decide) (by decide)) (by decide) <|
+  reach_move [11] (Local.fmerge ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 11 21 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bc_31 : Reach classic [31] [33] :=
+  reach_move [] (Local.nsplit 31 (by decide) (by decide)) (by decide) <|
+  reach_move [16] (Local.nsplit 15 (by decide) (by decide)) (by decide) <|
+  reach_move [8, 16] (Local.nsplit 7 (by decide) (by decide)) (by decide) <|
+  reach_move [4, 8] (Local.nmerge 3 16 (by decide)) (by decide) <|
+  reach_move [4, 8] (Local.nsplit 19 (by decide) (by decide)) (by decide) <|
+  reach_move [9, 10] (Local.nmerge 4 8 (by decide)) (by decide) <|
+  reach_move [12] (Local.fmerge ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 12 21 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bc_32 : Reach classic [32] [34] :=
+  reach_move [] (Local.nsplit 32 (by decide) (by decide)) (by decide) <|
+  reach_move [16] (Local.nsplit 16 (by decide) (by decide)) (by decide) <|
+  reach_move [8, 16] (Local.nsplit 8 (by decide) (by decide)) (by decide) <|
+  reach_move [4, 8, 16] (Local.nsplit 4 (by decide) (by decide)) (by decide) <|
+  reach_move [2, 4, 16] (Local.nmerge 2 8 (by decide)) (by decide) <|
+  reach_move [4, 10] (Local.nmerge 2 16 (by decide)) (by decide) <|
+  reach_move [4, 10] (Local.nsplit 18 (by decide) (by decide)) (by decide) <|
+  reach_move [10, 9] (Local.nmerge 4 9 (by decide)) (by decide) <|
+  reach_move [13] (Local.fmerge ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 13 21 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bc_33 : Reach classic [33] [35] :=
+  reach_move [] (Local.nsplit 33 (by decide) (by decide)) (by decide) <|
+  reach_move [16] (Local.nsplit 17 (by decide) (by decide)) (by decide) <|
+  reach_move [16, 9] (Local.nsplit 8 (by decide) (by decide)) (by decide) <|
+  reach_move [4, 9] (Local.nmerge 4 16 (by decide)) (by decide) <|
+  reach_move [4, 9] (Local.nsplit 20 (by decide) (by decide)) (by decide) <|
+  reach_move [9, 10] (Local.nmerge 4 10 (by decide)) (by decide) <|
+  reach_move [14] (Local.fmerge ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 14 21 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bc_34 : Reach classic [34] [36] :=
+  reach_move [] (Local.nsplit 34 (by decide) (by decide)) (by decide) <|
+  reach_move [17] (Local.nsplit 17 (by decide) (by decide)) (by decide) <|
+  reach_move [9, 17] (Local.nsplit 8 (by decide) (by decide)) (by decide) <|
+  reach_move [4, 9, 17] (Local.nsplit 4 (by decide) (by decide)) (by decide) <|
+  reach_move [2, 2, 4, 9] (Local.nsplit 17 (by decide) (by decide)) (by decide) <|
+  reach_move [2, 9, 8, 9] (Local.nmerge 2 4 (by decide)) (by decide) <|
+  reach_move [9, 9, 6] (Local.nmerge 2 8 (by decide)) (by decide) <|
+  reach_move [9, 10] (Local.nmerge 6 9 (by decide)) (by decide) <|
+  reach_move [15] (Local.fmerge ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 15 21 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bc_35 : Reach classic [35] [37] :=
+  reach_move [] (Local.nsplit 35 (by decide) (by decide)) (by decide) <|
+  reach_move [18] (Local.nsplit 17 (by decide) (by decide)) (by decide) <|
+  reach_move [9, 18] (Local.nsplit 8 (by decide) (by decide)) (by decide) <|
+  reach_move [4, 9, 18] (Local.nsplit 4 (by decide) (by decide)) (by decide) <|
+  reach_move [2, 9, 18] (Local.nmerge 2 4 (by decide)) (by decide) <|
+  reach_move [9, 6] (Local.nmerge 2 18 (by decide)) (by decide) <|
+  reach_move [9, 6] (Local.nsplit 20 (by decide) (by decide)) (by decide) <|
+  reach_move [6, 10] (Local.fmerge ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [21] (Local.nmerge 6 10 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 16 21 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bc_36 : Reach classic [36] [38] :=
+  reach_move [] (Local.nsplit 36 (by decide) (by decide)) (by decide) <|
+  reach_move [18] (Local.nsplit 18 (by decide) (by decide)) (by decide) <|
+  reach_move [9, 18] (Local.nsplit 9 (by decide) (by decide)) (by decide) <|
+  reach_move [5, 9, 18] (Local.nsplit 4 (by decide) (by decide)) (by decide) <|
+  reach_move [2, 9, 18] (Local.nmerge 2 5 (by decide)) (by decide) <|
+  reach_move [9, 7] (Local.nmerge 2 18 (by decide)) (by decide) <|
+  reach_move [9, 7] (Local.nsplit 20 (by decide) (by decide)) (by decide) <|
+  reach_move [7, 10] (Local.fmerge ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [21] (Local.nmerge 7 10 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 17 21 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bc_37 : Reach classic [37] [39] :=
+  reach_move [] (Local.nsplit 37 (by decide) (by decide)) (by decide) <|
+  reach_move [18] (Local.nsplit 19 (by decide) (by decide)) (by decide) <|
+  reach_move [18] (Local.fmerge ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 18 21 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bc_38 : Reach classic [38] [40] :=
+  reach_move [] (Local.nsplit 38 (by decide) (by decide)) (by decide) <|
+  reach_move [19] (Local.nsplit 19 (by decide) (by decide)) (by decide) <|
+  reach_move [19] (Local.fmerge ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 19 21 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bc_39 : Reach classic [39] [41] :=
+  reach_move [] (Local.nsplit 39 (by decide) (by decide)) (by decide) <|
+  reach_move [20] (Local.nsplit 19 (by decide) (by decide)) (by decide) <|
+  reach_move [20] (Local.fmerge ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 20 21 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bc_40 : Reach classic [40] [42] :=
+  reach_move [] (Local.nsplit 40 (by decide) (by decide)) (by decide) <|
+  reach_move [20] (Local.nsplit 20 (by decide) (by decide)) (by decide) <|
+  reach_move [10, 20] (Local.nsplit 10 (by decide) (by decide)) (by decide) <|
+  reach_move [5, 10, 20] (Local.nsplit 5 (by decide) (by decide)) (by decide) <|
+  reach_move [3, 5, 10, 20] (Local.nsplit 2 (by decide) (by decide)) (by decide) <|
+  reach_move [1, 5, 10, 20] (Local.nmerge 1 3 (by decide)) (by decide) <|
+  reach_move [5, 10, 4] (Local.nmerge 1 20 (by decide)) (by decide) <|
+  reach_move [10, 21] (Local.nmerge 4 5 (by decide)) (by decide) <|
+  reach_move [21] (Local.fmerge ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 21 21 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bc_41 : Reach classic [41] [43] :=
+  reach_move [] (Local.nsplit 41 (by decide) (by decide)) (by decide) <|
+  reach_move [21] (Local.nsplit 20 (by decide) (by decide)) (by decide) <|
+  reach_move [10, 21] (Local.nsplit 10 (by decide) (by decide)) (by decide) <|
+  reach_move [5, 10, 21] (Local.nsplit 5 (by decide) (by decide)) (by decide) <|
+  reach_move [3, 5, 10, 21] (Local.nsplit 2 (by decide) (by decide)) (by decide) <|
+  reach_move [1, 5, 10, 21] (Local.nmerge 1 3 (by decide)) (by decide) <|
+  reach_move [5, 10, 4] (Local.nmerge 1 21 (by decide)) (by decide) <|
+  reach_move [10, 22] (Local.nmerge 4 5 (by decide)) (by decide) <|
+  reach_move [22] (Local.fmerge ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 21 22 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bc_42 : Reach classic [42] [44] :=
+  reach_move [] (Local.nsplit 42 (by decide) (by decide)) (by decide) <|
+  reach_move [21] (Local.fsplit ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [10, 21] (Local.nsplit 9 (by decide) (by decide)) (by decide) <|
+  reach_move [5, 10, 21] (Local.nsplit 4 (by decide) (by decide)) (by decide) <|
+  reach_move [2, 10, 21] (Local.nmerge 2 5 (by decide)) (by decide) <|
+  reach_move [2, 7] (Local.nmerge 10 21 (by decide)) (by decide) <|
+  reach_move [2] (Local.nmerge 7 31 (by decide)) (by decide) <|
+  reach_move [2] (Local.nsplit 38 (by decide) (by decide)) (by decide) <|
+  reach_move [2, 19] (Local.nsplit 19 (by decide) (by decide)) (by decide) <|
+  reach_move [2, 9, 10] (Local.nsplit 19 (by decide) (by decide)) (by decide) <|
+  reach_move [2, 9, 10] (Local.fmerge ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [9, 10] (Local.nmerge 2 21 (by decide)) (by decide) <|
+  reach_move [23] (Local.fmerge ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 21 23 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bc_43 : Reach classic [43] [45] :=
+  reach_move [] (Local.nsplit 43 (by decide) (by decide)) (by decide) <|
+  reach_move [21] (Local.nsplit 22 (by decide) (by decide)) (by decide) <|
+  reach_move [21, 11] (Local.nsplit 11 (by decide) (by decide)) (by decide) <|
+  reach_move [21, 6, 11] (Local.nsplit 5 (by decide) (by decide)) (by decide) <|
+  reach_move [2, 6, 11] (Local.nmerge 3 21 (by decide)) (by decide) <|
+  reach_move [11, 24] (Local.nmerge 2 6 (by decide)) (by decide) <|
+  reach_move [24] (Local.nmerge 8 11 (by decide)) (by decide) <|
+  reach_move [24] (Local.nsplit 19 (by decide) (by decide)) (by decide) <|
+  reach_move [24] (Local.fmerge ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 21 24 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bd_24 : Reach classic [24] [22] :=
+  reach_move [] (Local.nsplit 24 (by decide) (by decide)) (by decide) <|
+  reach_move [12] (Local.nsplit 12 (by decide) (by decide)) (by decide) <|
+  reach_move [6, 12] (Local.nsplit 6 (by decide) (by decide)) (by decide) <|
+  reach_move [3, 12] (Local.nmerge 3 6 (by decide)) (by decide) <|
+  reach_move [3] (Local.nmerge 9 12 (by decide)) (by decide) <|
+  reach_move [3] (Local.fsplit ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [10] (Local.nmerge 3 9 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 10 12 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bd_25 : Reach classic [25] [23] :=
+  reach_move [] (Local.nsplit 25 (by decide) (by decide)) (by decide) <|
+  reach_move [12] (Local.nsplit 13 (by decide) (by decide)) (by decide) <|
+  reach_move [12, 6] (Local.nsplit 7 (by decide) (by decide)) (by decide) <|
+  reach_move [3, 4] (Local.nmerge 6 12 (by decide)) (by decide) <|
+  reach_move [4] (Local.nmerge 3 18 (by decide)) (by decide) <|
+  reach_move [4] (Local.fsplit ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [10] (Local.nmerge 4 9 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 10 13 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bd_26 : Reach classic [26] [24] :=
+  reach_move [] (Local.nsplit 26 (by decide) (by decide)) (by decide) <|
+  reach_move [13] (Local.nsplit 13 (by decide) (by decide)) (by decide) <|
+  reach_move [7, 13] (Local.nsplit 6 (by decide) (by decide)) (by decide) <|
+  reach_move [3, 7, 13] (Local.nsplit 3 (by decide) (by decide)) (by decide) <|
+  reach_move [2, 3, 13] (Local.nmerge 1 7 (by decide)) (by decide) <|
+  reach_move [13, 8] (Local.nmerge 2 3 (by decide)) (by decide) <|
+  reach_move [5] (Local.nmerge 8 13 (by decide)) (by decide) <|
+  reach_move [5] (Local.fsplit ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [10] (Local.nmerge 5 9 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 10 14 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bd_27 : Reach classic [27] [25] :=
+  reach_move [] (Local.nsplit 27 (by decide) (by decide)) (by decide) <|
+  reach_move [14] (Local.nsplit 13 (by decide) (by decide)) (by decide) <|
+  reach_move [6] (Local.nmerge 7 14 (by decide)) (by decide) <|
+  reach_move [6] (Local.fsplit ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [10] (Local.nmerge 6 9 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 10 15 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bd_28 : Reach classic [28] [26] :=
+  reach_move [] (Local.nsplit 28 (by decide) (by decide)) (by decide) <|
+  reach_move [14] (Local.nsplit 14 (by decide) (by decide)) (by decide) <|
+  reach_move [7] (Local.nmerge 7 14 (by decide)) (by decide) <|
+  reach_move [7] (Local.fsplit ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [10] (Local.nmerge 7 9 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 10 16 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bd_29 : Reach classic [29] [27] :=
+  reach_move [] (Local.nsplit 29 (by decide) (by decide)) (by decide) <|
+  reach_move [14] (Local.nsplit 15 (by decide) (by decide)) (by decide) <|
+  reach_move [8] (Local.nmerge 7 14 (by decide)) (by decide) <|
+  reach_move [8] (Local.fsplit ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [10] (Local.nmerge 8 9 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 10 17 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bd_30 : Reach classic [30] [28] :=
+  reach_move [] (Local.nsplit 30 (by decide) (by decide)) (by decide) <|
+  reach_move [15] (Local.nsplit 15 (by decide) (by decide)) (by decide) <|
+  reach_move [8, 15] (Local.nsplit 7 (by decide) (by decide)) (by decide) <|
+  reach_move [4, 8, 15] (Local.nsplit 3 (by decide) (by decide)) (by decide) <|
+  reach_move [2, 4, 15] (Local.nmerge 1 8 (by decide)) (by decide) <|
+  reach_move [15, 9] (Local.nmerge 2 4 (by decide)) (by decide) <|
+  reach_move [9] (Local.nmerge 6 15 (by decide)) (by decide) <|
+  reach_move [9] (Local.fsplit ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [10] (Local.nmerge 9 9 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 10 18 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bd_31 : Reach classic [31] [29] :=
+  reach_move [] (Local.nsplit 31 (by decide) (by decide)) (by decide) <|
+  reach_move [16] (Local.nsplit 15 (by decide) (by decide)) (by decide) <|
+  reach_move [8, 16] (Local.nsplit 7 (by decide) (by decide)) (by decide) <|
+  reach_move [4, 8, 16] (Local.nsplit 3 (by decide) (by decide)) (by decide) <|
+  reach_move [2, 8, 16] (Local.nmerge 1 4 (by decide)) (by decide) <|
+  reach_move [16, 5] (Local.nmerge 2 8 (by decide)) (by decide) <|
+  reach_move [10] (Local.nmerge 5 16 (by decide)) (by decide) <|
+  reach_move [10] (Local.fsplit ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [9] (Local.nmerge 10 10 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 9 20 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bd_32 : Reach classic [32] [30] :=
+  reach_move [] (Local.nsplit 32 (by decide) (by decide)) (by decide) <|
+  reach_move [16] (Local.nsplit 16 (by decide) (by decide)) (by decide) <|
+  reach_move [8, 16] (Local.nsplit 8 (by decide) (by decide)) (by decide) <|
+  reach_move [4, 8, 16] (Local.nsplit 4 (by decide) (by decide)) (by decide) <|
+  reach_move [2, 4, 8, 16] (Local.nsplit 2 (by decide) (by decide)) (by decide) <|
+  reach_move [1, 4, 8, 16] (Local.nmerge 1 2 (by decide)) (by decide) <|
+  reach_move [8, 16, 3] (Local.nmerge 1 4 (by decide)) (by decide) <|
+  reach_move [16, 5] (Local.nmerge 3 8 (by decide)) (by decide) <|
+  reach_move [11] (Local.nmerge 5 16 (by decide)) (by decide) <|
+  reach_move [11] (Local.fsplit ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [10] (Local.nmerge 9 11 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 10 20 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bd_33 : Reach classic [33] [31] :=
+  reach_move [] (Local.nsplit 33 (by decide) (by decide)) (by decide) <|
+  reach_move [17] (Local.nsplit 16 (by decide) (by decide)) (by decide) <|
+  reach_move [8, 17] (Local.nsplit 8 (by decide) (by decide)) (by decide) <|
+  reach_move [4, 17] (Local.nmerge 4 8 (by decide)) (by decide) <|
+  reach_move [12] (Local.nmerge 4 17 (by decide)) (by decide) <|
+  reach_move [12] (Local.fsplit ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [10] (Local.nmerge 9 12 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 10 21 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bd_34 : Reach classic [34] [32] :=
+  reach_move [] (Local.nsplit 34 (by decide) (by decide)) (by decide) <|
+  reach_move [17] (Local.nsplit 17 (by decide) (by decide)) (by decide) <|
+  reach_move [9, 17] (Local.nsplit 8 (by decide) (by decide)) (by decide) <|
+  reach_move [4, 17] (Local.nmerge 4 9 (by decide)) (by decide) <|
+  reach_move [13] (Local.nmerge 4 17 (by decide)) (by decide) <|
+  reach_move [13] (Local.fsplit ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [10] (Local.nmerge 9 13 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 10 22 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bd_35 : Reach classic [35] [33] :=
+  reach_move [] (Local.nsplit 35 (by decide) (by decide)) (by decide) <|
+  reach_move [18] (Local.nsplit 17 (by decide) (by decide)) (by decide) <|
+  reach_move [8] (Local.nmerge 9 18 (by decide)) (by decide) <|
+  reach_move [8] (Local.nsplit 27 (by decide) (by decide)) (by decide) <|
+  reach_move [14] (Local.nmerge 8 13 (by decide)) (by decide) <|
+  reach_move [14] (Local.fsplit ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [10] (Local.nmerge 9 14 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 10 23 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bd_36 : Reach classic [36] [34] :=
+  reach_move [] (Local.nsplit 36 (by decide) (by decide)) (by decide) <|
+  reach_move [18] (Local.nsplit 18 (by decide) (by decide)) (by decide) <|
+  reach_move [9, 18] (Local.nsplit 9 (by decide) (by decide)) (by decide) <|
+  reach_move [4, 9, 18] (Local.nsplit 5 (by decide) (by decide)) (by decide) <|
+  reach_move [3, 9, 18] (Local.nmerge 2 4 (by decide)) (by decide) <|
+  reach_move [9, 6] (Local.nmerge 3 18 (by decide)) (by decide) <|
+  reach_move [9, 6] (Local.fsplit ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [9, 10] (Local.nmerge 6 9 (by decide)) (by decide) <|
+  reach_move [10] (Local.nmerge 9 15 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 10 24 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bd_37 : Reach classic [37] [35] :=
+  reach_move [] (Local.nsplit 37 (by decide) (by decide)) (by decide) <|
+  reach_move [19] (Local.nsplit 18 (by decide) (by decide)) (by decide) <|
+  reach_move [9, 19] (Local.nsplit 9 (by decide) (by decide)) (by decide) <|
+  reach_move [5, 9, 19] (Local.nsplit 4 (by decide) (by decide)) (by decide) <|
+  reach_move [2, 9, 19] (Local.nmerge 2 5 (by decide)) (by decide) <|
+  reach_move [9, 7] (Local.nmerge 2 19 (by decide)) (by decide) <|
+  reach_move [9, 7] (Local.fsplit ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [9, 10] (Local.nmerge 7 9 (by decide)) (by decide) <|
+  reach_move [10] (Local.nmerge 9 16 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 10 25 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bd_38 : Reach classic [38] [36] :=
+  reach_move [] (Local.nsplit 38 (by decide) (by decide)) (by decide) <|
+  reach_move [19] (Local.nsplit 19 (by decide) (by decide)) (by decide) <|
+  reach_move [10, 19] (Local.nsplit 9 (by decide) (by decide)) (by decide) <|
+  reach_move [5, 10, 19] (Local.nsplit 4 (by decide) (by decide)) (by decide) <|
+  reach_move [2, 10, 19] (Local.nmerge 2 5 (by decide)) (by decide) <|
+  reach_move [10, 7] (Local.nmerge 2 19 (by decide)) (by decide) <|
+  reach_move [10, 7] (Local.fsplit ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [9, 10] (Local.nmerge 7 10 (by decide)) (by decide) <|
+  reach_move [10] (Local.nmerge 9 17 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 10 26 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bd_39 : Reach classic [39] [37] :=
+  reach_move [] (Local.nsplit 39 (by decide) (by decide)) (by decide) <|
+  reach_move [20] (Local.nsplit 19 (by decide) (by decide)) (by decide) <|
+  reach_move [10, 20] (Local.nsplit 9 (by decide) (by decide)) (by decide) <|
+  reach_move [4, 20] (Local.nmerge 5 10 (by decide)) (by decide) <|
+  reach_move [4] (Local.nmerge 15 20 (by decide)) (by decide) <|
+  reach_move [4] (Local.nsplit 35 (by decide) (by decide)) (by decide) <|
+  reach_move [18] (Local.nmerge 4 17 (by decide)) (by decide) <|
+  reach_move [18] (Local.fsplit ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [10] (Local.nmerge 9 18 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 10 27 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bd_40 : Reach classic [40] [38] :=
+  reach_move [] (Local.nsplit 40 (by decide) (by decide)) (by decide) <|
+  reach_move [20] (Local.nsplit 20 (by decide) (by decide)) (by decide) <|
+  reach_move [10, 20] (Local.nsplit 10 (by decide) (by decide)) (by decide) <|
+  reach_move [5, 10, 20] (Local.nsplit 5 (by decide) (by decide)) (by decide) <|
+  reach_move [3, 5, 10, 20] (Local.nsplit 2 (by decide) (by decide)) (by decide) <|
+  reach_move [1, 5, 10, 20] (Local.nmerge 1 3 (by decide)) (by decide) <|
+  reach_move [5, 10, 4] (Local.nmerge 1 20 (by decide)) (by decide) <|
+  reach_move [5, 10, 4] (Local.fsplit ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [4, 9, 10] (Local.nmerge 5 10 (by decide)) (by decide) <|
+  reach_move [10, 15] (Local.nmerge 4 9 (by decide)) (by decide) <|
+  reach_move [13] (Local.nmerge 10 15 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 13 25 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bd_41 : Reach classic [41] [39] :=
+  reach_move [] (Local.nsplit 41 (by decide) (by decide)) (by decide) <|
+  reach_move [20] (Local.fsplit ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [10] (Local.nmerge 9 20 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 10 29 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bd_42 : Reach classic [42] [40] :=
+  reach_move [] (Local.nsplit 42 (by decide) (by decide)) (by decide) <|
+  reach_move [21] (Local.fsplit ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [10] (Local.nmerge 9 21 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 10 30 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bd_43 : Reach classic [43] [41] :=
+  reach_move [] (Local.nsplit 43 (by decide) (by decide)) (by decide) <|
+  reach_move [22] (Local.fsplit ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [10] (Local.nmerge 9 22 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 10 31 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bd_44 : Reach classic [44] [42] :=
+  reach_move [] (Local.nsplit 44 (by decide) (by decide)) (by decide) <|
+  reach_move [22] (Local.nsplit 22 (by decide) (by decide)) (by decide) <|
+  reach_move [11, 22] (Local.nsplit 11 (by decide) (by decide)) (by decide) <|
+  reach_move [5, 6] (Local.nmerge 11 22 (by decide)) (by decide) <|
+  reach_move [5, 6] (Local.nsplit 33 (by decide) (by decide)) (by decide) <|
+  reach_move [6, 17] (Local.nmerge 5 16 (by decide)) (by decide) <|
+  reach_move [6, 17] (Local.fsplit ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [9, 10] (Local.nmerge 6 17 (by decide)) (by decide) <|
+  reach_move [10] (Local.nmerge 9 23 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 10 32 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bd_45 : Reach classic [45] [43] :=
+  reach_move [] (Local.nsplit 45 (by decide) (by decide)) (by decide) <|
+  reach_move [22] (Local.nsplit 23 (by decide) (by decide)) (by decide) <|
+  reach_move [22, 12] (Local.nsplit 11 (by decide) (by decide)) (by decide) <|
+  reach_move [22, 6, 12] (Local.nsplit 5 (by decide) (by decide)) (by decide) <|
+  reach_move [3, 6, 12] (Local.nmerge 2 22 (by decide)) (by decide) <|
+  reach_move [12, 24] (Local.nmerge 3 6 (by decide)) (by decide) <|
+  reach_move [24] (Local.nmerge 9 12 (by decide)) (by decide) <|
+  reach_move [24] (Local.fsplit ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [10] (Local.nmerge 9 24 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 10 33 (by decide)) (by decide) <|
+  Reach.refl _
+
+theorem bd_46 : Reach classic [46] [44] :=
+  reach_move [] (Local.nsplit 46 (by decide) (by decide)) (by decide) <|
+  reach_move [23] (Local.nsplit 23 (by decide) (by decide)) (by decide) <|
+  reach_move [12, 23] (Local.nsplit 11 (by decide) (by decide)) (by decide) <|
+  reach_move [6, 12, 23] (Local.nsplit 5 (by decide) (by decide)) (by decide) <|
+  reach_move [3, 6, 12] (Local.nmerge 2 23 (by decide)) (by decide) <|
+  reach_move [12, 25] (Local.nmerge 3 6 (by decide)) (by decide) <|
+  reach_move [25] (Local.nmerge 9 12 (by decide)) (by decide) <|
+  reach_move [25] (Local.fsplit ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [10] (Local.nmerge 9 25 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 10 34 (by decide)) (by decide) <|
+  Reach.refl _
+
+def baseClimb : (n : Nat) → 22 ≤ n → n ≤ 43 → Reach classic [n] [n + 2]
+  | 22, _, _ => bc_22
+  | 23, _, _ => bc_23
+  | 24, _, _ => bc_24
+  | 25, _, _ => bc_25
+  | 26, _, _ => bc_26
+  | 27, _, _ => bc_27
+  | 28, _, _ => bc_28
+  | 29, _, _ => bc_29
+  | 30, _, _ => bc_30
+  | 31, _, _ => bc_31
+  | 32, _, _ => bc_32
+  | 33, _, _ => bc_33
+  | 34, _, _ => bc_34
+  | 35, _, _ => bc_35
+  | 36, _, _ => bc_36
+  | 37, _, _ => bc_37
+  | 38, _, _ => bc_38
+  | 39, _, _ => bc_39
+  | 40, _, _ => bc_40
+  | 41, _, _ => bc_41
+  | 42, _, _ => bc_42
+  | 43, _, _ => bc_43
+  | 0, hn, _ => absurd hn (by decide)
+  | 1, hn, _ => absurd hn (by decide)
+  | 2, hn, _ => absurd hn (by decide)
+  | 3, hn, _ => absurd hn (by decide)
+  | 4, hn, _ => absurd hn (by decide)
+  | 5, hn, _ => absurd hn (by decide)
+  | 6, hn, _ => absurd hn (by decide)
+  | 7, hn, _ => absurd hn (by decide)
+  | 8, hn, _ => absurd hn (by decide)
+  | 9, hn, _ => absurd hn (by decide)
+  | 10, hn, _ => absurd hn (by decide)
+  | 11, hn, _ => absurd hn (by decide)
+  | 12, hn, _ => absurd hn (by decide)
+  | 13, hn, _ => absurd hn (by decide)
+  | 14, hn, _ => absurd hn (by decide)
+  | 15, hn, _ => absurd hn (by decide)
+  | 16, hn, _ => absurd hn (by decide)
+  | 17, hn, _ => absurd hn (by decide)
+  | 18, hn, _ => absurd hn (by decide)
+  | 19, hn, _ => absurd hn (by decide)
+  | 20, hn, _ => absurd hn (by decide)
+  | 21, hn, _ => absurd hn (by decide)
+  | (n+44), _, hb => absurd hb (by omega)
+
+def baseDesc : (m : Nat) → 24 ≤ m → m ≤ 46 → Reach classic [m] [m - 2]
+  | 24, _, _ => bd_24
+  | 25, _, _ => bd_25
+  | 26, _, _ => bd_26
+  | 27, _, _ => bd_27
+  | 28, _, _ => bd_28
+  | 29, _, _ => bd_29
+  | 30, _, _ => bd_30
+  | 31, _, _ => bd_31
+  | 32, _, _ => bd_32
+  | 33, _, _ => bd_33
+  | 34, _, _ => bd_34
+  | 35, _, _ => bd_35
+  | 36, _, _ => bd_36
+  | 37, _, _ => bd_37
+  | 38, _, _ => bd_38
+  | 39, _, _ => bd_39
+  | 40, _, _ => bd_40
+  | 41, _, _ => bd_41
+  | 42, _, _ => bd_42
+  | 43, _, _ => bd_43
+  | 44, _, _ => bd_44
+  | 45, _, _ => bd_45
+  | 46, _, _ => bd_46
+  | 0, hn, _ => absurd hn (by decide)
+  | 1, hn, _ => absurd hn (by decide)
+  | 2, hn, _ => absurd hn (by decide)
+  | 3, hn, _ => absurd hn (by decide)
+  | 4, hn, _ => absurd hn (by decide)
+  | 5, hn, _ => absurd hn (by decide)
+  | 6, hn, _ => absurd hn (by decide)
+  | 7, hn, _ => absurd hn (by decide)
+  | 8, hn, _ => absurd hn (by decide)
+  | 9, hn, _ => absurd hn (by decide)
+  | 10, hn, _ => absurd hn (by decide)
+  | 11, hn, _ => absurd hn (by decide)
+  | 12, hn, _ => absurd hn (by decide)
+  | 13, hn, _ => absurd hn (by decide)
+  | 14, hn, _ => absurd hn (by decide)
+  | 15, hn, _ => absurd hn (by decide)
+  | 16, hn, _ => absurd hn (by decide)
+  | 17, hn, _ => absurd hn (by decide)
+  | 18, hn, _ => absurd hn (by decide)
+  | 19, hn, _ => absurd hn (by decide)
+  | 20, hn, _ => absurd hn (by decide)
+  | 21, hn, _ => absurd hn (by decide)
+  | 22, hn, _ => absurd hn (by decide)
+  | 23, hn, _ => absurd hn (by decide)
+  | (n+47), _, hb => absurd hb (by omega)
+
+theorem climb_all (base : ∀ n, 22 ≤ n → n ≤ 43 → Reach classic [n] [n + 2]) :
+    ∀ n, 22 ≤ n → Reach classic [n] [n + 2] := by
+  intro n
+  induction n using Nat.strongRecOn with
+  | ind n ih =>
+    intro hn
+    by_cases hb : n ≤ 43
+    · exact base n hn hb
+    · have h44 : 44 ≤ n := by omega
+      have hcl : Reach classic [(n+1)/2] [(n+1)/2 + 2] := ih ((n+1)/2) (by omega) (by omega)
+      have hsp : Reach classic [n] [n/2, (n+1)/2] :=
+        reach_move [] (Local.nsplit n (by omega)
+          (by simp only [classic, List.mem_singleton, forall_eq]; omega))
+          (List.Perm.refl _) (Reach.refl _)
+      have hfr : Reach classic ([n/2] ++ [(n+1)/2]) ([n/2] ++ [(n+1)/2 + 2]) :=
+        reach_frame_left [n/2] hcl
+      have hmg : Reach classic [n/2, (n+1)/2 + 2] [n + 2] := by
+        have hc : ∀ f ∈ classic, ¬ ((f.a = n/2 ∧ f.b = (n+1)/2 + 2) ∨ (f.a = (n+1)/2 + 2 ∧ f.b = n/2)) := by
+          simp only [classic, List.mem_singleton, forall_eq]; omega
+        have hm := reach_move [] (Local.nmerge (n/2) ((n+1)/2 + 2) hc) (List.Perm.refl _) (Reach.refl _)
+        have e : n/2 + ((n+1)/2 + 2) = n + 2 := by omega
+        rwa [e] at hm
+      exact reach_trans hsp (reach_trans hfr hmg)
+
+theorem descD (base : ∀ m, 24 ≤ m → m ≤ 46 → Reach classic [m] [m - 2]) :
+    ∀ m, 24 ≤ m → Reach classic [m] [m - 2] := by
+  intro m
+  induction m using Nat.strongRecOn with
+  | ind m ih =>
+    intro hm
+    by_cases hb : m ≤ 46
+    · exact base m hm hb
+    · have h47 : 47 ≤ m := by omega
+      have hcl : Reach classic [(m+1)/2] [(m+1)/2 - 2] := ih ((m+1)/2) (by omega) (by omega)
+      have hsp : Reach classic [m] [m/2, (m+1)/2] :=
+        reach_move [] (Local.nsplit m (by omega)
+          (by simp only [classic, List.mem_singleton, forall_eq]; omega))
+          (List.Perm.refl _) (Reach.refl _)
+      have hfr : Reach classic ([m/2] ++ [(m+1)/2]) ([m/2] ++ [(m+1)/2 - 2]) :=
+        reach_frame_left [m/2] hcl
+      have hmg : Reach classic [m/2, (m+1)/2 - 2] [m - 2] := by
+        have hc : ∀ f ∈ classic, ¬ ((f.a = m/2 ∧ f.b = (m+1)/2 - 2) ∨ (f.a = (m+1)/2 - 2 ∧ f.b = m/2)) := by
+          simp only [classic, List.mem_singleton, forall_eq]; omega
+        have hm2 := reach_move [] (Local.nmerge (m/2) ((m+1)/2 - 2) hc) (List.Perm.refl _) (Reach.refl _)
+        have e : m/2 + ((m+1)/2 - 2) = m - 2 := by omega
+        rwa [e] at hm2
+      exact reach_trans hsp (reach_trans hfr hmg)
+
+/-- **Full sufficiency for Classic mode** (`9 + 10 = 21`).  Every `s, t ≥ 22` with
+    `t ≡ s (mod 2)` is solvable.  No `sorry`. -/
+theorem classic_sufficiency {s t : Nat} (hs : 22 ≤ s) (ht : 22 ≤ t)
+    (hg : (2 : Int) ∣ ((t : Int) - s)) : Reach classic [s] [t] := by
+  have hMc : Mval classic = 22 := by decide
+  have hgnc : gnat classic = 2 := by decide
+  have hclimb : ∀ n, Mval classic ≤ n → Reach classic [n] [n + gnat classic] := by
+    intro n hn; rw [hgnc]; exact climb_all baseClimb n (by rw [hMc] at hn; exact hn)
+  have hdescend : ∀ n, Mval classic ≤ n → Reach classic [n + gnat classic] [n] := by
+    intro n hn; rw [hgnc]
+    have hd : Reach classic [n + 2] [(n + 2) - 2] := descD baseDesc (n + 2) (by rw [hMc] at hn; omega)
+    have e : (n + 2) - 2 = n := by omega
+    rwa [e] at hd
+  have hgz : gz classic ∣ ((t : Int) - s) := by
+    have h2 : gz classic = 2 := by decide
+    rw [h2]; exact hg
+  exact sufficiency_of_pumps hclimb hdescend (by rw [hMc]; exact hs) (by rw [hMc]; exact ht) hgz
+
 end YaStupid
 
 -- Trust check: these print the axiom dependencies (should be the standard
@@ -419,3 +1122,4 @@ end YaStupid
 #print axioms YaStupid.classic_21_to_19
 #print axioms YaStupid.sufficiency_of_pumps
 #print axioms YaStupid.classic_42_to_44
+#print axioms YaStupid.classic_sufficiency
