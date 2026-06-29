@@ -98,47 +98,66 @@ picture, and §7 specializes everything to the game.
 
 Throughout this section fix $s,t>H$ with $t\equiv s\pmod g$.
 
-### 4.1 A partition lemma
+### 4.1 A partition lemma — and a correction
 
-> **Lemma 1 (carving).** Let $T>H$. From the one‑ball state $\{T\}$ one can reach,
-> using only normal gestures, any two‑part state $\{v,\,T-v\}$ with $1\le v\le T-1$,
-> and more generally the three‑part state $\{a,\,b,\,T-a-b\}$ whenever
-> $a,b\ge 1$ and $a+b\le T-1$.
+> ⚠️ **Erratum.** An earlier version of this note proved carving by first reaching
+> the **all‑ones** state. *That is false in general.* Take the false sum
+> $2+2=2$: tapping any $2$ yields $\{2,2\}$ (and $\{2,2\}$ merges back to $2$), so
+> a region of $2$s can **never** be reduced to $1$s. More adversarially,
+> $\{\,6+7=2,\ 6+8=3\,\}$ locks both $2$ and $3$ and neither ordained pair contains
+> a $1$, so a $1$ is *never producible at all*. Any argument that routes through
+> all‑ones is therefore invalid. (Credit to the reader who spotted this.)
 
-*Proof.* First, $\{T\}$ can reach the all‑ones state $\{1,1,\dots,1\}$: repeatedly
-split the smallest part that exceeds $1$. Each split strictly decreases the part
-it acts on, so the process terminates with every part equal to $1$. The only
-values that *cannot* be split are the finitely many $c_j\le H$; whenever the
-chosen smallest part equals some $c_j$, the state has total $T>H\ge c_j$ and
-therefore contains another part, which we split instead (or we first merge two
-parts to move off the value $c_j$). Once at all‑ones, group the units by normal
-merges into blocks of sizes $a$, $b$, and $T-a-b$. A merge is blocked only for
-the finitely many forbidden pairs $\{a_j,b_j\}$; if assembling a block would force
-such a pair, build the block in a different order (add a third unit first), which
-is always possible because each block we build has size $\ge 1$ and we have units
-to spare. $\square$
+What sufficiency actually needs is far weaker than all‑ones — only the ability to
+**form one trigger**: a single ball of value $c_i$ (to false‑split), or the pair
+$\{a_i,b_i\}$ side‑by‑side (to false‑merge), with the leftover collected into one
+ball. We state it as:
 
-The two‑part claim is the case where one of the three blocks is empty.
+> **Lemma 1 (trigger formation).** Let $T>H$ and fix a false sum $i$.
+> From $\{T\}$, using normal gestures only, one can reach
+> $\{c_i,\ T-c_i\}$ (when $T>c_i$) and $\{a_i,\ b_i,\ T-a_i-b_i\}$
+> (when $T>a_i+b_i$).
+
+*Proof (recombination, not reduction).* Triggers are built by **merging up**, the
+robust direction, rather than by splitting down to units. Concretely: split $T$
+once — legal since $T>H\ge\max_j c_j$ means $T$ is not a locked value — and keep
+splitting any part that is $\ge 2$ and not one of the finitely many locked $c_j$,
+until the working multiset consists of pieces no larger than $c_i$ (this halts:
+each normal split strictly shrinks the part it touches, and a locked part can be
+sidestepped because $T>H$ guarantees another part to act on). Now assemble the
+target value $v\in\{c_i\}$ or the two values $\{a_i,b_i\}$ by merging selected
+pieces: greedily add pieces to an accumulator, and whenever the *next* merge would
+be a forbidden pair $\{a_j,b_j\}$, merge a different pair first (with $\ge 3$ loose
+pieces there is always an alternative). Each accumulator reaches its target exactly
+because the pieces are $\le$ the target and sum to $\ge T> $ the target. Collect
+the remainder into one ball the same way. $\square$
+
+> **Honesty note.** The "pieces $\le c_i$, then recombine" step is the genuine
+> heart of sufficiency, and the bookkeeping needed to make it fully rigorous for
+> *every* configuration is more delicate than this paragraph (the locked values and
+> forbidden pairs interact). It is **not yet machine‑checked** (see §8). As
+> evidence that it is nonetheless *true*: an exhaustive search confirms every
+> in‑range pump for the adversarial $\{6+7=2,\,6+8=3\}$ above (where no $1$ ever
+> exists), and Lean‑checked witnesses solve $2+2=2$'s in‑range puzzle $5\to7$ and
+> Classic's $19\to21$ / $21\to19$.
 
 ### 4.2 One pump in each direction
 
 > **Lemma 2 (pumps).** Let $T>H$. For each false sum $i$, the one‑ball state
-> $\{T\}$ can reach the one‑ball states $\{T+\delta_i\}$ and $\{T-\delta_i\}$, and
-> every intermediate state used has total in $\{T,\,T\pm\delta_i\}\subseteq(H-\delta_i,\infty)$.
+> $\{T\}$ can reach the one‑ball states $\{T+\delta_i\}$ and $\{T-\delta_i\}$.
 
-*Proof.* Two cases by the sign of $d_i$; in both, $T>H\ge\max(a_i+b_i,c_i)$, so
-all the carvings below are legal by Lemma 1, and **no ball we ever hold equals
-any $c_j$ unless we put it there on purpose**, because every value in play is
-$>H\ge\max_j c_j$ except the deliberately created $c_i$.
+*Proof.* Use Lemma 1 to form the trigger (legal since $T>H\ge\max(a_i+b_i,c_i)$),
+fire the false move, then normal‑merge the two remaining balls into one (their
+pair is a forbidden $\{a_j,b_j\}$ for at most one $j$, which is avoided by first
+splitting one of them — possible as both are $\ge1$ and their sum is $>H$).
 
 *Raising by $\delta_i$.*
-- If $d_i<0$ (so $c_i=a_i+b_i+\delta_i$): carve $\{a_i,\,b_i,\,T-a_i-b_i\}$
+- If $d_i<0$ (so $c_i=a_i+b_i+\delta_i$): form $\{a_i,\,b_i,\,T-a_i-b_i\}$
   (Lemma 1), **false‑merge** $\{a_i,b_i\}\mapsto c_i$ to reach
-  $\{c_i,\,T-a_i-b_i\}$ with total $T+\delta_i$, then normal‑merge to
-  $\{T+\delta_i\}$.
-- If $d_i>0$ (so $a_i+b_i=c_i+\delta_i$): carve $\{c_i,\,T-c_i\}$, **false‑split**
+  $\{c_i,\,T-a_i-b_i\}$ with total $T+\delta_i$, then merge to $\{T+\delta_i\}$.
+- If $d_i>0$ (so $a_i+b_i=c_i+\delta_i$): form $\{c_i,\,T-c_i\}$, **false‑split**
   $c_i\mapsto\{a_i,b_i\}$ to reach $\{a_i,b_i,T-c_i\}$ with total $T+\delta_i$,
-  then normal‑merge.
+  then merge.
 
 *Lowering by $\delta_i$* is the mirror image (swap the roles of false‑split and
 false‑merge), and is exactly the reverse sequence of raising from $T-\delta_i$;
@@ -298,8 +317,21 @@ Lean 4.31.0) in [`../lean/YaStupid.lean`](../lean/YaStupid.lean):
   $21 \not\to 23$ in Classic mode via the invariant "positive, and either
   totalling $19$ or being exactly the single ball $21$".
 
-Both are confirmed to use no `sorry` (axioms: `propext, Classical.choice,
-Quot.sound`). The **sufficiency** direction (§4) — Bézout pumps plus the carving
-lemma — is the paper argument and is *not* yet mechanized: it wants a multiset
-partition lemma and Bézout, which sit most naturally on Mathlib. See
-[`../lean/README.md`](../lean/README.md) for scope and how to re-check.
+- **Sufficiency witnesses** mechanize concrete instances of §4 by exhibiting the
+  actual move sequence (`reach_move`/`reach_trans`, permutations closed by
+  `decide`): `classic_19_to_21` and `classic_21_to_19` (both directions), and
+  **`cfg222_5_to_7`** — a checked proof that the all‑ones‑breaking lie $2+2=2$
+  still solves its in‑range puzzle $5\to7$.
+
+All of the above are confirmed to use no `sorry` (axioms: `propext,
+Classical.choice, Quot.sound`).
+
+What is **not** mechanized is the *universal* sufficiency statement
+($\forall s,t\ge M$ with $g\mid t-s$). It hinges on Lemma 1 (trigger formation)
+for an arbitrary configuration — the delicate carving argument of §4.1 — which is
+a substantial formalization in its own right (most naturally over Mathlib, whose
+prebuilt cache is unreachable from the sandbox this was developed in). The
+necessary condition and the sharpness trap *pin the threshold*; the worked
+witnesses plus the exhaustive search over the adversarial $\{6+7=2,\,6+8=3\}$
+configuration are strong evidence for the middle, but it remains the open piece.
+See [`../lean/README.md`](../lean/README.md) for scope and how to re-check.

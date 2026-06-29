@@ -259,9 +259,65 @@ theorem classic_trap : ¬ Reach classic [21] [23] := by
   · have h2321 : (23 : Nat) = 21 := by simpa using List.perm_singleton.1 hp
     omega
 
+/-! ### Sufficiency — building blocks and worked witnesses
+
+The §4 "field of all ones" lemma is *false* in general: with `2 + 2 = 2`, tapping
+a `2` yields `{2,2}` (it never reduces to `1`s). So sufficiency cannot route
+through all-ones. The witnesses below are constructed directly and show the pump
+mechanism still works — in particular that `2 + 2 = 2` does **not** trap an
+in-range puzzle. Each step is an honest `Step`; the permutations are closed by
+`decide`. -/
+
+/-- Compose reachability. -/
+theorem reach_trans {cfg : Config} {a b c : List Nat}
+    (h1 : Reach cfg a b) (h2 : Reach cfg b c) : Reach cfg a c := by
+  induction h1 with
+  | refl => exact h2
+  | step s _ ih => exact Reach.step s (ih h2)
+
+/-- Take one local move on the `ain` part of `a` (the rest is carried along),
+    then continue.  `ain`/`aout` are pinned by `hl`; `rest` is explicit. -/
+theorem reach_move {cfg : Config} {a ain aout : List Nat} (rest : List Nat)
+    (hl : Local cfg ain aout) (hp : a.Perm (ain ++ rest))
+    {b : List Nat} (hr : Reach cfg (aout ++ rest) b) : Reach cfg a b :=
+  Reach.step ⟨ain, aout, rest, hl, hp, List.Perm.refl _⟩ hr
+
+/-- Classic, climbing: `19 → 21` (normal-split 19 to {9,10}, then false-merge). -/
+theorem classic_19_to_21 : Reach classic [19] [21] :=
+  reach_move [] (Local.nsplit 19 (by decide) (by decide)) (by decide) <|
+  reach_move [] (Local.fmerge ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  Reach.refl _
+
+/-- Classic, descending: `21 → 19` (false-split 21, then re-merge around the
+    forbidden {9,10} pair).  Shows the move set reaches both directions. -/
+theorem classic_21_to_19 : Reach classic [21] [19] :=
+  reach_move [] (Local.fsplit ⟨9, 10, 21⟩ (by decide)) (by decide) <|
+  reach_move [10] (Local.nsplit 9 (by decide) (by decide)) (by decide) <|
+  reach_move [5] (Local.nmerge 4 10 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 14 5 (by decide)) (by decide) <|
+  Reach.refl _
+
+/-- The pathological config `2 + 2 = 2`. -/
+def cfg222 : Config := [⟨2, 2, 2⟩]
+
+/-- **`2 + 2 = 2` does not trap solvability.**  `M = H + 1 = 5` here, and the
+    in-range puzzle `5 → 7` is solved — even though a field of all ones is
+    unreachable.  The route gets a `1` from the odd `3` (which splits normally),
+    false-splits a `2` for the `+2`, then merges back avoiding the `{2,2}` pair. -/
+theorem cfg222_5_to_7 : Reach cfg222 [5] [7] :=
+  reach_move []      (Local.nsplit 5 (by decide) (by decide)) (by decide) <|
+  reach_move [2]     (Local.nsplit 3 (by decide) (by decide)) (by decide) <|
+  reach_move [1, 2]  (Local.fsplit ⟨2, 2, 2⟩ (by decide))     (by decide) <|
+  reach_move [2, 2]  (Local.nmerge 1 2 (by decide))           (by decide) <|
+  reach_move [2]     (Local.nmerge 3 2 (by decide))           (by decide) <|
+  reach_move []      (Local.nmerge 5 2 (by decide))           (by decide) <|
+  Reach.refl _
+
 end YaStupid
 
 -- Trust check: these print the axiom dependencies (should be the standard
 -- [propext, Classical.choice, Quot.sound] — and crucially NOT `sorryAx`).
 #print axioms YaStupid.reach_congr
 #print axioms YaStupid.classic_trap
+#print axioms YaStupid.cfg222_5_to_7
+#print axioms YaStupid.classic_21_to_19

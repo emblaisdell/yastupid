@@ -23,21 +23,31 @@ reflexive/transitive closure `Reach`.
   (§5 of the note): both endpoints are `≥ H = 21` and share parity, yet the move
   is impossible.
 
-Both theorems are checked to depend only on the standard axioms
+- **Sufficiency witnesses** (`reach_move`, `reach_trans`, and concrete proofs):
+  `classic_19_to_21` and `classic_21_to_19` (both directions in Classic), and
+  **`cfg222_5_to_7`** — a checked proof that the lie `2 + 2 = 2` (which makes a
+  field of all ones impossible) still solves its in-range puzzle `5 → 7`. Each
+  step is a real `Step`; the reorderings are closed by `decide`.
+
+All theorems are checked to depend only on the standard axioms
 `[propext, Classical.choice, Quot.sound]` — **no `sorryAx`**, so there are no
 gaps. The `#print axioms` lines at the bottom of the file re-confirm this on
 every build.
 
 ## What is *not* (yet) mechanized
 
-The **sufficiency** direction of the main theorem — that `s, t ≥ M` with
-`g ∣ (t − s)` is *enough* — is proved on paper in the note (§4: Bézout pumps that
-stay above `H`, plus the partition/carving lemma). It is **not** formalized here:
-it needs a multiset partition lemma and Bézout, which are most naturally done over
-Mathlib, and Mathlib's prebuilt cache is unreachable from the sandbox this was
-developed in (the toolchain itself had to be side-loaded from GitHub releases
-because the Lean CDN was blocked). The necessary condition and the sharpness
-trap — the two ends that pin the threshold — are what is machine-checked above.
+The **universal sufficiency** statement (`∀ s,t ≥ M` with `g ∣ (t − s)`, solvable)
+is proved on paper in the note (§4: Bézout pumps that stay above `H`, plus
+**Lemma 1, trigger formation**). It is **not** formalized here. An earlier draft
+proved carving via an "all-ones" field, which is *false* in general
+(`2 + 2 = 2` never reduces to ones) — so the corrected proof builds triggers by
+recombination, and mechanizing that for an arbitrary configuration is a
+substantial undertaking, most naturally over Mathlib (whose prebuilt cache is
+unreachable from the sandbox this was developed in — the toolchain itself had to
+be side-loaded from GitHub release assets because the Lean CDN was blocked). What
+*is* machine-checked are the two ends that pin the threshold (necessity and the
+sharpness trap) plus the worked sufficiency witnesses above; the universal middle
+is the open piece.
 
 ## Check it yourself
 
