@@ -338,17 +338,32 @@ each intermediate `kc` is below the leg) rebuilds the legs.  Closes every both-e
 `c=2` trap including the adjacent `b=a+2` case (`4+4=2`, `4+6=2`, `4+8=2`, `6+6=2`, …).
 `single_sufficiency_div` is the general divisible-leg form (`c ∣ a`, `c ∣ b`, `c ≥ 2`).
 
+### `c = 2`, every leg parity (legs `≥ 3`) — **completely closed**
+
+All four parity classes of `⟨a,b,2⟩` with both legs `≥ 3` are now closed:
+- `single_sufficiency_c2_aa` — `a = b` (any parity; `3+3=2`, `5+5=2`): build `[2a]` from
+  `a` copies of `2`, **split** `[2a] → [a,a]`, false-merge `{a,a} → 2`.  Works for odd
+  `a`, where `descendSeq` (needs `2 ∣ a`) does not.
+- `single_sufficiency_c2_both_odd` — both odd, `a ≠ b` (`3+5=2`, `5+7=2`): build
+  `[2a] → [a,a]`, bridge one `[a]` to `[b]` with `d = (b−a)/2` more `2`s (`mergeTwos`).
+- `single_sufficiency_c2_odd_even` — one odd, one even (`4+5=2`, `3+4=2` via `reach_swap`):
+  even leg from `2`s, odd leg `b = 3+2f` from a `[3]` seed produced by the gadget
+  `[2,2,2] → [6] → [3,3] → [1,2,3]`; the spare `1` and `2` merge harmlessly into the
+  leftover (`1, 2 ∉ {a,b}`).
+
+Crucially none of these needs a `1`-source from `[n+g]`: odd legs are reached by
+**splitting an even ball** (`6 → {3,3}`), and a targeted bidirectional BFS confirms even a
+power-of-`2` source descends with **no false split**.
+
 ## What is *not* (yet) mechanized
 
-One family remains open in the mechanization (BFS-verified solvable — see below):
-- **`c = 2` with an *odd* leg** (`3+3=2`, `3+4=2`, `3+5=2`, … legs `≥ 3`).  Climb is
-  closed (`peelc2` is the peeler), but **descend** must rebuild an *odd* leg, which
-  needs a `1` (no leg is `1`, and a `2` is locked — it only false-splits to `{a,b}`).
-  A `1` is freely available by normal moves when `n+g` is *not* a power of `2`, but
-  when `n+g = 2^k` the pile scatters to pure `2`s and a `1` requires a balanced
-  false-split/merge excursion.  A uniform "peel an arbitrary value" lemma would close
-  it; that is the outstanding construction.  (Configs with a leg `= 2 = c` are a
-  further degenerate sliver.)
+A single degenerate sliver remains (BFS-verified solvable — see below):
+- **`c = 2` with a leg equal to `c`** (i.e. `a = 2` or `b = 2`, so a leg coincides with
+  the merge target — `⟨2,b,2⟩`, `⟨a,2,2⟩`).  The pumps still hold (BFS), but the value
+  `2` is simultaneously a leg and the locked target, so the `legs ≥ 3` safety the `c=2`
+  peeler/gather rely on (`{·,2} ≠ {a,b}`) no longer holds; closing it needs a bespoke
+  treatment of the `a = c` coincidence (the `c ≥ 3` analogue `⟨c,2c,c⟩` is handled by
+  `peel4c`).
 
 This is a construction gap, not a math gap: an exhaustive search
 ([`../test/counterexample-search.js`](../test/counterexample-search.js)) plus targeted
@@ -383,10 +398,11 @@ predicate (`single_sufficiency_scat` / `single_sufficiency_oneScat` — one non-
 leg suffices), and the genuine `c·2^k` traps are now closed too: the diagonal `a=b=c`
 (`single_sufficiency_kkk`), the `a=b` traps (`single_sufficiency_aac`), and the
 `a ≠ b` traps `⟨c·2^i,c·2^j,c⟩` (`single_sufficiency_trap`, including the pathological
-`⟨c,2c,c⟩` via `peel4c`). For `c = 2`, every both-even config (legs `≥ 3`) is closed by
-the copies-of-`2` hub (`single_sufficiency_c2_both_even`). The single remaining open
-family is `c = 2` with an odd leg, where descend must build an odd leg from a `1` that
-is only freely available when `n+g` is not a power of `2`.** All configs are
+`⟨c,2c,c⟩` via `peel4c`). For `c = 2`, **every config with both legs `≥ 3` is closed**
+(all four leg parities: `single_sufficiency_c2_aa`, `…_both_even`, `…_both_odd`,
+`…_odd_even`) via the copies-of-`2` hub.  The single remaining open family is the
+degenerate `c = 2` with a leg equal to `c` (`⟨2,b,2⟩`), where the value `2` is both a
+leg and the locked target.** All configs are
 exhaustively BFS-checked to contain NO counterexample
 (`test/counterexample-search.js`, plus targeted bidirectional BFS over the traps and
 the whole `c=2` family), so `M=H+1` is correct there too. Exhaustive search over the
