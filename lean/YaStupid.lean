@@ -3056,3 +3056,138 @@ theorem solvable_2_10_7 {s t : Nat} (hs : 13 ≤ s) (ht : 13 ≤ t)
 #print axioms YaStupid.solvable_2_10_7
 
 end YaStupid
+
+
+namespace YaStupid
+
+/-! ### A non-hub construction for the looping config `2 + 2 = 2`
+
+`2+2=2` *bridges* every `g`-gap above `H+1` (BFS-confirmed) yet has **no** all-ones
+reachability: `2 = c` is locked (it can only false-split to `{2,2}`), so a `2` is
+indestructible — no single ball ever reaches a pure-ones pile, and the hub's
+`la`/`lb` are *false*.  We close it anyway, **without** the hub, via one recursive
+helper `peel2 : [v] → [2, v-2]` (peel a `2` off any `v ≥ 3`).  The two pumps then
+need no ones at all:
+
+- **climb** `[n] → [n+2]`: peel a `2`, *false-split* it (`2 → {2,2}`, gaining `g`),
+  remerge normally;
+- **descend** `[n+2] → [n]`: peel two `2`s, *false-merge* them (`{2,2} → 2`, losing
+  `g`), remerge normally.
+
+`H = 4`, `M = 5`, `g = 2`.  This shows the leg-`≥ c` family is mechanizable even
+where the hub provably cannot run. -/
+
+/-- Peel a single `2` off any ball `v ≥ 3`: `[v] → [2, v-2]`.  Strong recursion:
+    `v ∈ {3,4,5}` split directly; `v ≥ 6` splits, peels the smaller half, and
+    remerges the rest (never the forbidden `{2,2}`, since `v/2 ≥ 3`). -/
+theorem peel2 : ∀ v, 3 ≤ v → Reach [⟨2,2,2⟩] [v] [2, v - 2] := by
+  intro v
+  induction v using Nat.strongRecOn with
+  | ind v ih =>
+    intro hv
+    by_cases h3 : v = 3
+    · subst h3
+      exact reach_move' [] (Local.nsplit 3 (by omega)
+        (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _)
+        (by decide) (Reach.refl _)
+    · by_cases h4 : v = 4
+      · subst h4
+        exact reach_move [] (Local.nsplit 4 (by omega)
+          (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+      · by_cases h5 : v = 5
+        · subst h5
+          exact reach_move [] (Local.nsplit 5 (by omega)
+            (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+        · -- v ≥ 6
+          have hsp : Reach [⟨2,2,2⟩] [v] [v / 2, (v + 1) / 2] :=
+            reach_move [] (Local.nsplit v (by omega)
+              (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+          have hpe := ih (v / 2) (by omega) (by omega)        -- [v/2] → [2, v/2 - 2]
+          have hfr : Reach [⟨2,2,2⟩] [v / 2, (v + 1) / 2] [2, v / 2 - 2, (v + 1) / 2] := by
+            have := reach_frame [(v + 1) / 2] hpe; simpa using this
+          have hcc : ∀ f ∈ ([⟨2,2,2⟩] : Config),
+              ¬ ((f.a = v / 2 - 2 ∧ f.b = (v + 1) / 2) ∨ (f.a = (v + 1) / 2 ∧ f.b = v / 2 - 2)) := by
+            simp only [List.mem_singleton, forall_eq]; omega
+          have hmrg0 : Reach [⟨2,2,2⟩] [v / 2 - 2, (v + 1) / 2] [v / 2 - 2 + (v + 1) / 2] :=
+            reach_move [] (Local.nmerge (v / 2 - 2) ((v + 1) / 2) hcc) (List.Perm.refl _) (Reach.refl _)
+          have hmrg : Reach [⟨2,2,2⟩] [2, v / 2 - 2, (v + 1) / 2] [2, v - 2] := by
+            have := reach_frame_left [2] hmrg0
+            rw [show v / 2 - 2 + (v + 1) / 2 = v - 2 from by omega] at this
+            simpa using this
+          exact reach_trans hsp (reach_trans hfr hmrg)
+
+/-- Merge `[2, n-2] → [n]` for `n ≥ 5` (normal: `n-2 ≥ 3`, so `{2,n-2} ≠ {2,2}`). -/
+theorem merge2 (n : Nat) (hn : 5 ≤ n) : Reach [⟨2,2,2⟩] [2, n - 2] [n] := by
+  have hcc : ∀ f ∈ ([⟨2,2,2⟩] : Config), ¬ ((f.a = 2 ∧ f.b = n - 2) ∨ (f.a = n - 2 ∧ f.b = 2)) := by
+    simp only [List.mem_singleton, forall_eq]; omega
+  have hm := reach_move [] (Local.nmerge 2 (n - 2) hcc) (List.Perm.refl _) (Reach.refl _)
+  rw [show 2 + (n - 2) = n from by omega] at hm
+  exact hm
+
+/-- **Climb pump for `2+2=2`**: `[n] → [n+2]` for every `n ≥ 5`. -/
+theorem climb_222 : ∀ n, 5 ≤ n → Reach [⟨2,2,2⟩] [n] [n + 2] := by
+  intro n hn
+  have hp := peel2 n (by omega)                                -- [n] → [2, n-2]
+  have hfs : Reach [⟨2,2,2⟩] [2, n - 2] [2, 2, n - 2] := by     -- false-split the 2 (+g)
+    have hm := reach_move [n - 2] (Local.fsplit ⟨2,2,2⟩ (List.mem_singleton.2 rfl))
+      (List.Perm.refl _) (Reach.refl _)
+    simpa using hm
+  have hm1 : Reach [⟨2,2,2⟩] [2, 2, n - 2] [2, n] := by         -- merge {2, n-2} → n
+    have := reach_frame_left [2] (merge2 n hn); simpa using this
+  have hm2 : Reach [⟨2,2,2⟩] [2, n] [n + 2] := by               -- merge {2, n} → n+2
+    have hcc : ∀ f ∈ ([⟨2,2,2⟩] : Config), ¬ ((f.a = 2 ∧ f.b = n) ∨ (f.a = n ∧ f.b = 2)) := by
+      simp only [List.mem_singleton, forall_eq]; omega
+    have hm := reach_move [] (Local.nmerge 2 n hcc) (List.Perm.refl _) (Reach.refl _)
+    rw [show 2 + n = n + 2 from by omega] at hm
+    exact hm
+  exact reach_trans hp (reach_trans hfs (reach_trans hm1 hm2))
+
+/-- **Descend pump for `2+2=2`**: `[n+2] → [n]` for every `n ≥ 5`. -/
+theorem descend_222 : ∀ n, 5 ≤ n → Reach [⟨2,2,2⟩] [n + 2] [n] := by
+  intro n hn
+  have hp1 : Reach [⟨2,2,2⟩] [n + 2] [2, n] := by               -- peel a 2 off n+2
+    have := peel2 (n + 2) (by omega)
+    rw [show n + 2 - 2 = n from by omega] at this
+    exact this
+  have hp2 : Reach [⟨2,2,2⟩] [2, n] [2, 2, n - 2] := by         -- peel a 2 off the n
+    have := reach_frame_left [2] (peel2 n (by omega)); simpa using this
+  have hfm : Reach [⟨2,2,2⟩] [2, 2, n - 2] [2, n - 2] := by     -- false-merge {2,2} → 2 (−g)
+    have hm := reach_move [n - 2] (Local.fmerge ⟨2,2,2⟩ (List.mem_singleton.2 rfl))
+      (List.Perm.refl _) (Reach.refl _)
+    simpa using hm
+  exact reach_trans hp1 (reach_trans hp2 (reach_trans hfm (merge2 n hn)))
+
+/-- **Full sufficiency for the looping config `2 + 2 = 2`**, via the two pumps —
+    *without* the all-ones hub (which provably cannot run here, since `2 = c` is
+    locked and never reaches ones).  Every `s, t ≥ M = 5` with `2 ∣ (t−s)` are
+    interreachable. -/
+theorem single_sufficiency_222 :
+    ∀ s t, Mval [⟨2,2,2⟩] ≤ s → Mval [⟨2,2,2⟩] ≤ t →
+      gz [⟨2,2,2⟩] ∣ ((t : Int) - s) → Reach [⟨2,2,2⟩] [s] [t] := by
+  have hg : gnat [⟨2,2,2⟩] = 2 := gnat_dpos 2 2 2 (by omega)
+  have hM : Mval [⟨2,2,2⟩] = 5 := by
+    have hH : Hnat [⟨2,2,2⟩] = 4 := Hnat_dpos 2 2 2 (by omega)
+    show Hnat [⟨2,2,2⟩] + 1 = 5; rw [hH]
+  have climb : ∀ n, Mval [⟨2,2,2⟩] ≤ n → Reach [⟨2,2,2⟩] [n] [n + gnat [⟨2,2,2⟩]] := by
+    intro n hn; rw [hg]; exact climb_222 n (by omega)
+  have descend : ∀ n, Mval [⟨2,2,2⟩] ≤ n → Reach [⟨2,2,2⟩] [n + gnat [⟨2,2,2⟩]] [n] := by
+    intro n hn; rw [hg]; exact descend_222 n (by omega)
+  intro s t hs ht hg'
+  exact sufficiency_of_pumps climb descend hs ht hg'
+
+/-- The degenerate lie `2 + 2 = 2` is completely solvable above `M = 5`. -/
+theorem solvable_2_2_2 {s t : Nat} (hs : 5 ≤ s) (ht : 5 ≤ t)
+    (h : (2:Int) ∣ ((t:Int) - s)) : Reach [⟨2,2,2⟩] [s] [t] := by
+  refine single_sufficiency_222 s t ?_ ?_ ?_
+  · have h5 : Mval [⟨2,2,2⟩] = 5 := by decide
+    omega
+  · have h5 : Mval [⟨2,2,2⟩] = 5 := by decide
+    omega
+  · have : gz [⟨2,2,2⟩] = 2 := by decide
+    rw [this]; exact h
+
+#print axioms YaStupid.peel2
+#print axioms YaStupid.single_sufficiency_222
+#print axioms YaStupid.solvable_2_2_2
+
+end YaStupid
