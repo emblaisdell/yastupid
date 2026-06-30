@@ -362,19 +362,18 @@ Classical.choice, Quot.sound`).
 
   `classic_sufficiency_symbolic` re-derives Classic from this with **no BFS**.
 
-- **`climb_dpos`** discharges the **climb pump for the dual case `a+b > c`** with
-  legs in `[2,c)` (e.g. `3+3=5`, `3+4=6`). Here the roles swap (climb harvests a `c`
-  and false-*splits* it; descend forms `{a,b}` and false-*merges* it), but the stuck
-  cluster is again `{2c−1, 2c, 2c+1}`, handled by `climb_2cm1_pos/climb_2c_pos/
-  climb_2cp1_pos`; clean values use `climbCleanLow_pos`. The descend clean range is
-  done (`descendCleanLow_pos`).
+- **`single_sufficiency_dpos`** discharges **full sufficiency for the dual case
+  `a+b > c`** with legs in `[2,c)` and `2(a+b)+2 ≤ 3c` (e.g. `3+3=5`, `3+4=6`,
+  `5+5=8`). Here the roles swap (climb harvests a `c` and false-*splits* it; descend
+  forms `{a,b}` and false-*merges* it), the sole stuck value is `2c`, and the cluster
+  `{2c−1,2c,2c+1}` is handled directly. The descend's key device is **`unlockC`**: a
+  locked `c` plus a spare unit becomes `c+1` (normal) and scatters; `loseGpos` then
+  drops a pile of ones by `g`. `solvable_3_3_5` is a concrete corollary.
 
-The remaining open pieces are (1) the descend *cluster* for `a+b>c` (the three
-starts `2c−1,2c,2c+1`, which a BFS witness shows need a non-local route — climbing
-the total and re-forming pairs — and whose high start range can hold several stuck
-clusters); (2) the `min(a,b)=1` edge of `a + b < c` (build-a-`c` must dodge
-`{1, max(a,b)} = {a,b}`, with `a=b=1` special); and (3) the corner families
-(`a+b>c` with a leg `≥ c`, or `c ≤ (a+b)/2`, e.g. `2+2=2`). All are uniform but
-case-heavy. For any *concrete* single sum the base is finite and dischargeable by
-BFS (the Classic pipeline), so every concrete instance is fully provable. See
-[`../lean/README.md`](../lean/README.md).
+The remaining open pieces are (1) the `min(a,b)=1` edge of `a + b < c` (build-a-`c`
+must dodge `{1, max(a,b)} = {a,b}`, with `a=b=1` special); and (2) `a+b>c` outside
+the single-cluster family — `2(a+b)+2 > 3c` (so `4c, …` also appear and a
+scatter-past-several-clusters is needed), a leg `≥ c`, or `c ≤ (a+b)/2` (e.g.
+`2+2=2`). All are uniform but case-heavy. For any *concrete* single sum the base is
+finite and dischargeable by BFS (the Classic pipeline), so every concrete instance
+is fully provable. See [`../lean/README.md`](../lean/README.md).

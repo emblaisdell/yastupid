@@ -122,38 +122,39 @@ and **`descDrop`** drops a single ball `[m]` to `m−g` ones over the whole base
 
 `baseD_dneg` then reads `[n+g] → 1^n → [n]` (`descDrop` then `gatherBig`).
 
-## The dual case `a + b > c`: climb pump done (`climb_dpos`)
+## The dual case `a + b > c`: fully closed for the single-cluster family
 
-For the family `2 ≤ a, b`, `a < c`, `b < c`, `c < a + b` (legs below `c`, sum above —
-e.g. `3+3=5`, `3+4=6`) the roles swap: `H = a+b`, `g = a+b−c`, **climb** harvests a
-`c` and false-*splits* it (`+g`), **descend** forms `{a,b}` and false-*merges* it
-(`−g`).  Because legs are `< c`, `a+b < 2c`, so the single stuck value `2c` sits in
-the base and the scatter-problematic values are again exactly `{2c−1, 2c, 2c+1}`.
+For `2 ≤ a, b`, `a < c`, `b < c`, `c < a + b`, **and `2(a+b)+2 ≤ 3c`** (e.g.
+`3+3=5`, `3+4=6`, `5+5=8`) **both pumps are proved**, so `single_sufficiency_dpos`
+gives full sufficiency.  The roles swap: `H = a+b`, `g = a+b−c`, **climb** harvests
+a `c` and false-*splits* it (`+g`), **descend** forms `{a,b}` and false-*merges* it
+(`−g`).  Legs `< c` give `a+b < 2c`, and `2(a+b)+2 ≤ 3c` keeps `2c` the *only* stuck
+value in the base (no `4c, …`), so the scatter-problematic set is again exactly
+`{2c−1, 2c, 2c+1}`.
 
-The **climb pump is fully proved** (`climb_dpos` ← `baseC_dpos`):
-`climbCleanLow_pos` (scatter, build a `c` with `gatherBig`, false-split, merge up)
-for clean values, and `climb_2cm1_pos` / `climb_2c_pos` / `climb_2cp1_pos` for the
-cluster.  Reeling ones onto any base uses `mergeUnitsLow` (legs `≥ 2` ⇒ `{v+i,1} ≠
-{a,b}`).  The **descend clean range** is also done (`descendCleanLow_pos`: scatter,
-gather `{a,b}`, false-merge, reel onto the `c`).
+- **Climb** (`climb_dpos` ← `baseC_dpos`): `climbCleanLow_pos` (scatter, build a `c`
+  with `gatherBig`, false-split, merge up) + `climb_2cm1_pos/2c/2cp1` for the cluster.
+- **Descend** (`baseD_dpos`): the new primitive is **`unlockC`** — a locked `c` plus
+  a spare unit becomes `c+1` (normal) and scatters via `getUnits`. With it,
+  **`loseGpos`** drops a pile of ones by `g` (fmerge `{a,b}`, then unlock the
+  resulting `c`), and **`descToOnes_pos`** drops `[m]` to `m−g` ones — clean values
+  scatter then `loseGpos`; the cluster starts false-split *all* their `c`s,
+  scatter, and `loseGpos` two/three times.  `solvable_3_3_5` is a concrete corollary.
+
+Reeling ones onto any base uses `mergeUnitsLow` (legs `≥ 2` ⇒ `{v+i,1} ≠ {a,b}`).
 
 ## What is *not* (yet) mechanized
 
-1. **The `min(a,b) = 1` sub-case of `a + b < c`.** Everything in the `a+b<c`
-   development assumes `2 ≤ a, b` (so `gatherBig` is clean). When a leg is `1`,
-   building a `c` from ones must route around the one forbidden merge
-   `{1, max(a,b)} = {a,b}` (and `a=b=1` is special — the only merge of two ones is
-   the forced `{1,1} → c`). Same shape, extra cases.
-2. **The descend pump for `a + b > c`** (the cluster starts `2c−1, 2c, 2c+1`).
-   Unlike every other pump, these need a *non-local* route: a BFS witness for
-   `3+3=5`, `[10] → [9]`, climbs the total to `11` and back, re-forming `{a,b}`
-   pairs by merging a unit onto the locked `c` (`c → c+1`, normal) and re-splitting.
-   A clean primitive exists (`loseG`-style: fmerge a pair, then unlock the resulting
-   `c` via `c+1` + `getUnits`, netting `−g` on a pile of ones), but the descend's
-   *high* start range `[M+g, 2H+2g]` can contain **several** stuck clusters
-   (`2c, 4c, …`), so a uniform scatter-past-all-clusters is still needed.
-3. **`a + b > c` with a leg `≥ c`** (e.g. `2+10=7`) and **`c ≤ (a+b)/2`** (e.g.
-   `2+2=2`), where more / higher stuck clusters appear.
+1. **The `min(a,b) = 1` sub-case of `a + b < c`.** The `a+b<c` development assumes
+   `2 ≤ a, b` (so `gatherBig` is clean). When a leg is `1`, building a `c` from ones
+   must route around the one forbidden merge `{1, max(a,b)} = {a,b}` (and `a=b=1` is
+   special — the only merge of two ones is the forced `{1,1} → c`). Same shape,
+   extra cases.
+2. **`a + b > c` outside the single-cluster family** — `2(a+b)+2 > 3c` (so `4c, …`
+   also sit in the descend's high start range `[M+g, 2H+2g]`, needing a uniform
+   scatter-past-*several*-clusters), a leg `≥ c` (e.g. `2+10=7`), or `c ≤ (a+b)/2`
+   (e.g. `2+2=2`).  The `unlockC`/`loseGpos` machinery is the right tool; only the
+   multi-cluster bookkeeping remains.
 
 These are intricate but mechanical; they are most comfortable over Mathlib.
 
@@ -167,22 +168,21 @@ descend : ∀ n, Mval cfg ≤ n → Reach cfg [n + gnat cfg] [n]
 `sufficiency_of_pumps` already reduces *general* sufficiency to these. For Classic
 they are discharged above (and now also re-derived symbolically). For a single sum
 with `2 ≤ a, b` and `a + b < c` **both pumps are fully proved**; for `a + b > c`
-with legs `< c` the **climb pump is fully proved** and descend is reduced to its
-cluster.  What remains is uniform but case-heavy, and wants Mathlib-level
-`List`/`Multiset` automation (whose cache is unreachable from the sandbox this was
-developed in — the toolchain itself had to be side-loaded from GitHub release
-assets because the Lean CDN was blocked).
+with legs `< c` and `2(a+b)+2 ≤ 3c` **both pumps are fully proved** too.  What
+remains is uniform but case-heavy, and wants Mathlib-level `List`/`Multiset`
+automation (whose cache is unreachable from the sandbox this was developed in — the
+toolchain itself had to be side-loaded from GitHub release assets because the Lean
+CDN was blocked).
 
 So the present status: **Classic is completely characterized (necessity +
 sufficiency + sharpness, all `sorry`-free) — and now *also* as a corollary of a
-fully symbolic theorem. For every single sum with `2 ≤ a, b` and `a + b < c`,
-solvability is completely characterized (`single_sufficiency_dneg`). For the dual
-`a + b > c` with legs in `[2, c)`, the climb pump is fully proved (`climb_dpos`) and
-the descend clean range is done; the remaining gaps are the descend cluster for
-`a+b>c`, the `min(a,b)=1` edge of `a + b < c`, and the corner families
-(`leg ≥ c`, `c ≤ (a+b)/2`).** Exhaustive search over the adversarial
-`{6+7=2, 6+8=3}` (where no `1` ever exists) finds every in-range pump reachable, so
-the general pumps are *true* too.
+fully symbolic theorem. Solvability is completely characterized for every single
+sum with `2 ≤ a, b` and either `a + b < c` (`single_sufficiency_dneg`) or
+`a + b > c` with legs `< c` and `2(a+b)+2 ≤ 3c` (`single_sufficiency_dpos`,
+e.g. `3+3=5`). The remaining gaps are the `min(a,b)=1` edge of `a + b < c` and the
+multi-cluster / corner families of `a + b > c`.** Exhaustive search over the
+adversarial `{6+7=2, 6+8=3}` (where no `1` ever exists) finds every in-range pump
+reachable, so the general pumps are *true* too.
 
 ## Check it yourself
 
