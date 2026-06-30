@@ -377,9 +377,17 @@ Classical.choice, Quot.sound`).
   `a+b < c` is closed except the degenerate `a=b=1`** (where ones cannot merge).
   `solvable_1_2_5` is a concrete corollary.
 
-The remaining open pieces are (1) `a=b=1` with `a+b<c` (e.g. `1+1=5`); and (2)
-`a+b>c` outside the single-cluster family — `2(a+b)+2 > 3c` (so `4c, …` also appear
-and a scatter-past-several-clusters is needed), a leg `≥ c`, or `c ≤ (a+b)/2` (e.g.
-`2+2=2`). All are uniform but case-heavy. For any *concrete* single sum the base is
-finite and dischargeable by BFS (the Classic pipeline), so every concrete instance
-is fully provable. See [`../lean/README.md`](../lean/README.md).
+Since then both families above have been **closed**: `a=b=1` with `a+b<c` via
+2-seeds (`single_sufficiency_a11`), and *all* of `a+b>c` with legs `<c` — every
+cluster structure, no `2(a+b)+2 ≤ 3c` restriction — via the all-ones hub
+(`single_sufficiency_dpos_full`, e.g. `4+4=5`, `6+6=7`). For `a+b>c` with a leg
+`≥ c`, **`single_sufficiency_legGE`** gives full sufficiency conditional on the two
+leg-scatter facts `la : Reach [a] (1^a)`, `lb : Reach [b] (1^b)` (the one step where
+the greedy scatter measure can fail); `solvable_2_10_7` discharges them for the
+concrete `2+10=7` (`b=10 > c=7`). The only instances still open are the
+measure-zero set where a leg cannot scatter to ones at all (`a=b=c`, `1+14=7`),
+where `la`/`lb` are false and a different, non-hub construction is needed; these are
+exhaustively BFS-verified to have no counterexample, so `M=H+1` holds there too. For
+any *concrete* single sum the base is finite and dischargeable by BFS (the Classic
+pipeline), so every concrete instance is fully provable. See
+[`../lean/README.md`](../lean/README.md).

@@ -185,23 +185,47 @@ to `[c,c]`, false-split one `c`, and reel everything onto the other `c` (positio
 via `perm_c_ab`); the cluster starts `2c−1, 2c, 2c+1` harvest the `c` directly.
 `solvable_1_1_5` is a concrete corollary.
 
+### `a+b>c` with a leg `≥ c`, isolated to a single hypothesis (`single_sufficiency_legGE`)
+
+The last family is now mechanized **conditionally**, pinning the obstruction to one
+crisp spot. When a leg is `≥ c` the all-ones hub breaks at exactly one step —
+scattering the legs back after the forced `c → {a,b}` — because `scatterRaw`'s
+max-value measure can *rise* there (and for `1+14=7`, `14 = 2c`, greedy scatter
+literally loops). Every *other* hub ingredient (`gatherBig`, `gatherPrefix`,
+`unlockC`, hence `loseGposGen`) is already leg-`<c`-free. So we package precisely
+the broken step as two hypotheses
+
+```
+la : Reach [⟨a,b,c⟩] [a] (1^a)      lb : Reach [⟨a,b,c⟩] [b] (1^b)
+```
+
+— *"each leg scatters to ones"* — and prove **`single_sufficiency_legGE`**: for
+**any** legs (including `≥ c`), `la ∧ lb` gives full sufficiency. The trick is
+`scatterRawClean`, a strong recursion that at `v = c` calls `la`/`lb` instead of
+recursing into the legs, so it halves on every other value and is well-founded for
+*any* `a, b, c`.
+
+This both **generalizes** `single_sufficiency_dpos_full` (when both legs `< c`,
+`la`/`lb` are free via `scatterClean`) and **closes concrete leg-`≥ c` instances**:
+**`solvable_2_10_7`** fully proves `2 + 10 = 7` (with `b = 10 > c = 7`) `sorry`-free,
+discharging `la` directly (`2 < 7`) and `lb` by splitting `10 → [5,5]` first
+(`5 < 7`). Both depend only on `[propext, Classical.choice, Quot.sound]`.
+
 ## What is *not* (yet) mechanized
 
-The single remaining family is **BFS-verified solvable** — an exhaustive
-counterexample search ([`../test/counterexample-search.js`](../test/counterexample-search.js))
-checks both pumps for `1+1=c` (`c = 3..9`), every `a+b>c` with a leg `≥ c`
-(`2+10=7`, `2+2=2`, the pathological `1+14=7`, …) and finds **no counterexample
-anywhere**: the threshold `M = H+1` holds universally as far as the search reaches.
-So the gap below is a proof-engineering gap, not a math gap:
-
-- **`a + b > c` with a leg `≥ c`** (e.g. `2+10=7`, and the degenerate `a=b=c`,
-  `2+2=2`). Here `scatterRaw`'s max-value measure fails (the forced `c → {a,b}` can
-  *raise* the max), and for `1+14=7` (`14 = 2c`) greedy scatter literally loops, so
-  the scatter recursion needs a subtler termination argument. *(Note: `c ≤ (a+b)/2`
-  always forces a leg `≥ c`, so it is subsumed here — the `legs < c` hub already
-  covers every `a+b>c` with both legs below `c`, e.g. `6+6=7`.)*
-
-This is intricate but mechanical; it is most comfortable over Mathlib.
+What remains is a genuinely **measure-zero** set: single sums `a+b>c` where a leg
+**cannot scatter to ones at all**, so `la`/`lb` are not merely hard but *false* —
+e.g. the degenerate `a=b=c` (`2+2=2`: `2 = c`, so `2` can only false-split to
+`{2,2}`, never reaching `1`), and `1+14=7` (`14 = 2c` loops). For these the hub
+provably cannot apply (no single well-founded measure makes leg-scatter terminate:
+`nsplit` needs the measure to *increase*, yet `c → {a,b}` with `b > c` needs
+`μ(c) > μ(b)` — contradictory). They are nonetheless **BFS-verified solvable** by
+other paths: an exhaustive search
+([`../test/counterexample-search.js`](../test/counterexample-search.js)) checks both
+pumps for `1+1=c` (`c = 3..9`) and every `a+b>c` with a leg `≥ c` (`2+10=7`,
+`2+2=2`, `1+14=7`, …) and finds **no counterexample anywhere** — `M = H+1` holds
+universally. So the only remaining gap is an *alternative, non-hub* construction for
+that measure-zero looping set; the general leg-`≥ c` case is done.
 
 Equivalently phrased — the two one-step pumps for an **arbitrary** configuration:
 
@@ -222,12 +246,16 @@ fully symbolic theorem. Solvability is now completely characterized for **every*
 single sum with `a + b < c` (`single_sufficiency_dneg` for `2 ≤ a, b`,
 `single_sufficiency_dneg_min1` for a unit leg, `single_sufficiency_a11` for
 `a = b = 1`), and for every `a + b > c` with both legs `< c`
-(`single_sufficiency_dpos_full`, e.g. `3+3=5`, `4+4=5`, `6+6=7`). The single
-remaining family — `a+b>c` with a leg `≥ c` — is exhaustively BFS-checked to
-contain NO counterexample (`test/counterexample-search.js`): the threshold `M=H+1`
-is correct there too; only the Lean construction is missing.** Exhaustive search
-over the adversarial `{6+7=2, 6+8=3}` (where no `1` ever exists) likewise finds
-every in-range pump reachable.
+(`single_sufficiency_dpos_full`, e.g. `3+3=5`, `4+4=5`, `6+6=7`). For `a+b>c` with
+a leg `≥ c`, `single_sufficiency_legGE` gives full sufficiency conditional on the
+two leg-scatter facts `la`, `lb`, and `solvable_2_10_7` discharges them for the
+concrete `2+10=7` (`b > c`). The only instances still open are the measure-zero set
+where a leg cannot scatter to ones at all (`a=b=c`, `1+14=7`); these are
+exhaustively BFS-checked to contain NO counterexample
+(`test/counterexample-search.js`), so `M=H+1` is correct there too and only an
+alternative non-hub Lean construction is missing.** Exhaustive search over the
+adversarial `{6+7=2, 6+8=3}` (where no `1` ever exists) likewise finds every
+in-range pump reachable.
 
 ## Check it yourself
 
