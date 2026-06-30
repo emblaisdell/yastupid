@@ -3462,3 +3462,255 @@ theorem solvable_1_1_1 {s t : Nat} (hs : 3 ≤ s) (ht : 3 ≤ t)
 #print axioms YaStupid.solvable_1_1_1
 
 end YaStupid
+
+
+namespace YaStupid
+
+/-! ### Closing `1 + 14 = 7` — the inexact-leg hub (the last gap)
+
+`1+14=7` (`a=1`, `b=14≥c=7`, `g=8`, `M=16`) is the representative of the last open
+family: `a+b>c` with a leg `≥ c` whose legs scatter only *inexactly* — `[14]` reaches
+`1^22`, never `1^14` (`scatter14_1147`).  The all-ones hub *does* run here, but two
+things differ from `single_sufficiency_dpos_full`:
+
+1. **building a ball from ones must dodge the `{1,14}` merge** (`a=1`): only `v=15`
+   is blocked (`{1,14}→7`), handled by building `[13]+[2]` instead (`build1147`);
+2. **the climb gains `2g` not `g`** (the leg `14` scatters to `1^22 = 1^(14+g)`), so
+   `gainOneG1147` gains `2g` then sheds `g` via the leg-free `loseG1147` to net `+g`.
+
+Everything else is the standard hub: scatter `[s]→1^r` (with the `7`-escape),
+walk the pile by `g`, rebuild `[t]`. -/
+
+/-- Pull one `1` from the front of a `(k+1)`-ones pile to sit before `x`. -/
+theorem perm_pull1 (k x : Nat) :
+    (List.replicate (k + 1) 1 ++ [x]).Perm (1 :: x :: List.replicate k 1) := by
+  rw [List.replicate_succ]
+  exact (List.perm_append_comm (l₁ := List.replicate k 1) (l₂ := [x])).cons 1
+
+/-- Build any ball `[v]` from `v` ones in `1+14=7`, dodging the `{1,14}` merge.
+    `v ≤ 14`: `gather`.  `v = 15`: build `[13] + [2]`, merge `{13,2}→15`.
+    `v ≥ 16`: build `[v-1]` (recursively), merge `{1,v-1}→v` (safe: `v-1 ≠ 14`). -/
+theorem build1147 : ∀ v, 1 ≤ v → Reach [⟨1,14,7⟩] (List.replicate v 1) [v] := by
+  intro v
+  induction v using Nat.strongRecOn with
+  | ind v ih =>
+    intro hv
+    by_cases h14 : v ≤ 14
+    · exact gather 1 14 7 v (by omega) (by omega)
+    · by_cases h15 : v = 15
+      · subst h15
+        have key : List.replicate 15 (1:Nat) = List.replicate 13 1 ++ List.replicate 2 1 := by
+          rw [replicate_one_add]
+        have b13 : Reach [⟨1,14,7⟩] (List.replicate 13 1) [13] := gather 1 14 7 13 (by omega) (by omega)
+        have b2 : Reach [⟨1,14,7⟩] (List.replicate 2 1) [2] := gather 1 14 7 2 (by omega) (by omega)
+        have s1 : Reach [⟨1,14,7⟩] (List.replicate 15 1) ([13] ++ List.replicate 2 1) := by
+          rw [key]; have := reach_frame (List.replicate 2 1) b13; simpa using this
+        have s2 : Reach [⟨1,14,7⟩] ([13] ++ List.replicate 2 1) [13, 2] := by
+          have := reach_frame_left [13] b2; simpa using this
+        have s3 : Reach [⟨1,14,7⟩] [13, 2] [15] := by
+          have hcc : ∀ f ∈ ([⟨1,14,7⟩] : Config), ¬ ((f.a = 13 ∧ f.b = 2) ∨ (f.a = 2 ∧ f.b = 13)) := by
+            simp only [List.mem_singleton, forall_eq]; omega
+          have hm := reach_move [] (Local.nmerge 13 2 hcc) (List.Perm.refl _) (Reach.refl _)
+          simpa using hm
+        exact reach_trans s1 (reach_trans s2 s3)
+      · -- v ≥ 16
+        have hrec := ih (v - 1) (by omega) (by omega)
+        have key : List.replicate v (1:Nat) = List.replicate 1 1 ++ List.replicate (v - 1) 1 := by
+          rw [replicate_one_add]; congr 1; omega
+        have s1 : Reach [⟨1,14,7⟩] (List.replicate v 1) [1, v - 1] := by
+          rw [key]; have := reach_frame_left (List.replicate 1 1) hrec; simpa using this
+        have s2 : Reach [⟨1,14,7⟩] [1, v - 1] [v] := by
+          have hcc : ∀ f ∈ ([⟨1,14,7⟩] : Config), ¬ ((f.a = 1 ∧ f.b = v - 1) ∨ (f.a = v - 1 ∧ f.b = 1)) := by
+            simp only [List.mem_singleton, forall_eq]; omega
+          have hm := reach_move [] (Local.nmerge 1 (v - 1) hcc) (List.Perm.refl _) (Reach.refl _)
+          rw [show 1 + (v - 1) = v from by omega] at hm
+          exact hm
+        exact reach_trans s1 s2
+
+/-- Scatter any ball to *some* ones-pile in `1+14=7` (`v=7` via the `escape7` route,
+    everything else by halving / `scatterClean`).  Returns `r ≥ v`. -/
+theorem scatter1147 : ∀ v, 1 ≤ v → ∃ r, v ≤ r ∧ Reach [⟨1,14,7⟩] [v] (List.replicate r 1) := by
+  intro v
+  induction v using Nat.strongRecOn with
+  | ind v ih =>
+    intro hv
+    by_cases h7 : v = 7
+    · exact ⟨15, by omega, by rw [h7]; exact escape7_1147⟩
+    · by_cases hlt : v < 7
+      · exact ⟨v, by omega, scatterClean 1 14 7 v (by omega) hlt⟩
+      · -- v ≥ 8
+        obtain ⟨r1, hr11, hr1r⟩ := ih (v / 2) (by omega) (by omega)
+        obtain ⟨r2, hr21, hr2r⟩ := ih ((v + 1) / 2) (by omega) (by omega)
+        refine ⟨r1 + r2, by omega, ?_⟩
+        have hns : Reach [⟨1,14,7⟩] [v] [v / 2, (v + 1) / 2] :=
+          reach_move [] (Local.nsplit v (by omega)
+            (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+        have st1 : Reach [⟨1,14,7⟩] [v / 2, (v + 1) / 2] (List.replicate r1 1 ++ [(v + 1) / 2]) := by
+          have := reach_frame [(v + 1) / 2] hr1r; simpa using this
+        have st2 : Reach [⟨1,14,7⟩] (List.replicate r1 1 ++ [(v + 1) / 2])
+            (List.replicate r1 1 ++ List.replicate r2 1) := by
+          have := reach_frame_left (List.replicate r1 1) hr2r; simpa using this
+        rw [replicate_one_add] at st2
+        exact reach_trans hns (reach_trans st1 st2)
+
+/-- Unlock a locked `7` with `K ≥ 1` spare ones: `7 :: 1^K → 1^(7+K)`
+    (`{7,1}→8` is normal, then scatter the `8`). -/
+theorem unlock7 : ∀ K, 1 ≤ K → Reach [⟨1,14,7⟩] (7 :: List.replicate K 1) (List.replicate (7 + K) 1) := by
+  intro K hK
+  have hrK : List.replicate K (1:Nat) = 1 :: List.replicate (K - 1) 1 := by
+    cases K with
+    | zero => omega
+    | succ n => simp [List.replicate_succ]
+  have hcc : ∀ f ∈ ([⟨1,14,7⟩] : Config), ¬ ((f.a = 7 ∧ f.b = 1) ∨ (f.a = 1 ∧ f.b = 7)) := by
+    simp only [List.mem_singleton, forall_eq]; omega
+  have s1 : Reach [⟨1,14,7⟩] (7 :: List.replicate K 1) (8 :: List.replicate (K - 1) 1) := by
+    rw [hrK]
+    have hm := reach_move (List.replicate (K - 1) 1) (Local.nmerge 7 1 hcc)
+      (List.Perm.refl _) (Reach.refl _)
+    simpa using hm
+  have gu : Reach [⟨1,14,7⟩] [8] (List.replicate 8 1) := sc8_1147
+  have s2 : Reach [⟨1,14,7⟩] (8 :: List.replicate (K - 1) 1)
+      (List.replicate 8 1 ++ List.replicate (K - 1) 1) := by
+    have := reach_frame (List.replicate (K - 1) 1) gu; simpa using this
+  have ecat : List.replicate 8 (1:Nat) ++ List.replicate (K - 1) 1 = List.replicate (7 + K) 1 := by
+    rw [replicate_one_add]; congr 1; omega
+  rw [ecat] at s2
+  exact reach_trans s1 s2
+
+/-- Drop `g = 8` from a ones-pile: gather a `14`, false-merge `{1,14}→7`, unlock the
+    `7`.  `1^K → 1^(K-8)` for `K ≥ 16`. -/
+theorem loseG1147 : ∀ K, 16 ≤ K → Reach [⟨1,14,7⟩] (List.replicate K 1) (List.replicate (K - 8) 1) := by
+  intro K hK
+  have ga : Reach [⟨1,14,7⟩] (List.replicate K 1) (14 :: List.replicate (K - 14) 1) :=
+    gatherPrefix 1 14 7 14 K (by omega) (by omega) (by omega)
+  -- bring a 1 next to the 14 and false-merge {1,14}→7
+  have hfm : Reach [⟨1,14,7⟩] (14 :: List.replicate (K - 14) 1) (7 :: List.replicate (K - 15) 1) := by
+    have hrK : List.replicate (K - 14) (1:Nat) = 1 :: List.replicate (K - 15) 1 := by
+      rw [show K - 14 = (K - 15) + 1 from by omega, List.replicate_succ]
+    rw [hrK]
+    -- state 14 :: 1 :: 1^(K-15); merge the {1,14} pair (perm to [1,14] ++ rest)
+    have hm := reach_move' (List.replicate (K - 15) 1) (Local.fmerge ⟨1,14,7⟩ (List.mem_singleton.2 rfl))
+      (by exact (List.Perm.swap 1 14 (List.replicate (K - 15) 1)))
+      (List.Perm.refl _) (Reach.refl _)
+    simpa using hm
+  have hun : Reach [⟨1,14,7⟩] (7 :: List.replicate (K - 15) 1) (List.replicate (7 + (K - 15)) 1) :=
+    unlock7 (K - 15) (by omega)
+  rw [show 7 + (K - 15) = K - 8 from by omega] at hun
+  exact reach_trans ga (reach_trans hfm hun)
+
+/-- Gain `2g = 16` to a ones-pile: build a `7`, false-split `7→{1,14}`, scatter the
+    `14` (`→1^22`).  `1^K → 1^(K+16)` for `K ≥ 7`. -/
+theorem gainG1147 : ∀ K, 7 ≤ K → Reach [⟨1,14,7⟩] (List.replicate K 1) (List.replicate (K + 16) 1) := by
+  intro K hK
+  have gC : Reach [⟨1,14,7⟩] (List.replicate 7 1) [7] := gather 1 14 7 7 (by omega) (by omega)
+  have hsplit : List.replicate K (1:Nat) = List.replicate 7 1 ++ List.replicate (K - 7) 1 := by
+    rw [replicate_one_add]; congr 1; omega
+  have s1 : Reach [⟨1,14,7⟩] (List.replicate K 1) (7 :: List.replicate (K - 7) 1) := by
+    rw [hsplit]; have := reach_frame (List.replicate (K - 7) 1) gC; simpa using this
+  have s2 : Reach [⟨1,14,7⟩] (7 :: List.replicate (K - 7) 1) (1 :: 14 :: List.replicate (K - 7) 1) := by
+    have hm := reach_move (List.replicate (K - 7) 1)
+      (Local.fsplit ⟨1,14,7⟩ (List.mem_singleton.2 rfl)) (List.Perm.refl _) (Reach.refl _)
+    simpa using hm
+  have s3 : Reach [⟨1,14,7⟩] (1 :: 14 :: List.replicate (K - 7) 1)
+      (1 :: (List.replicate 22 1 ++ List.replicate (K - 7) 1)) := by
+    have := reach_frame_left [1] (reach_frame (List.replicate (K - 7) 1) scatter14_1147)
+    simpa using this
+  have ecat : (1:Nat) :: (List.replicate 22 1 ++ List.replicate (K - 7) 1) = List.replicate (K + 16) 1 := by
+    rw [replicate_one_add, show (1:Nat) :: List.replicate (22 + (K - 7)) 1
+          = List.replicate (1 + (22 + (K - 7))) 1 from by rw [← List.replicate_succ]; congr 1; omega]
+    congr 1; omega
+  rw [ecat] at s3
+  exact reach_trans s1 (reach_trans s2 s3)
+
+/-- Net gain `g = 8`: gain `2g` then shed `g`.  `1^K → 1^(K+8)` for `K ≥ 16`. -/
+theorem gainOneG1147 : ∀ K, 16 ≤ K → Reach [⟨1,14,7⟩] (List.replicate K 1) (List.replicate (K + 8) 1) := by
+  intro K hK
+  have hg := gainG1147 K (by omega)                 -- 1^K → 1^(K+16)
+  have hl := loseG1147 (K + 16) (by omega)           -- 1^(K+16) → 1^(K+8)
+  rw [show K + 16 - 8 = K + 8 from by omega] at hl
+  exact reach_trans hg hl
+
+/-- Walk a ones-pile UP by `8j`. -/
+theorem onesUp1147 : ∀ j K, 16 ≤ K → Reach [⟨1,14,7⟩] (List.replicate K 1) (List.replicate (K + 8 * j) 1) := by
+  intro j
+  induction j with
+  | zero => intro K hK; rw [Nat.mul_zero, Nat.add_zero]; exact Reach.refl _
+  | succ j ih =>
+    intro K hK
+    have step := gainOneG1147 K hK
+    have hrec := ih (K + 8) (by omega)
+    rw [Nat.mul_succ]
+    rw [show K + 8 + 8 * j = K + (8 * j + 8) from by omega] at hrec
+    exact reach_trans step hrec
+
+/-- Walk a ones-pile DOWN by `8j` (staying `≥ 16`). -/
+theorem onesDown1147 : ∀ j K, 16 + 8 * j ≤ K → Reach [⟨1,14,7⟩] (List.replicate K 1) (List.replicate (K - 8 * j) 1) := by
+  intro j
+  induction j with
+  | zero => intro K hK; rw [Nat.mul_zero, Nat.sub_zero]; exact Reach.refl _
+  | succ j ih =>
+    intro K hK
+    have step := loseG1147 K (by omega)
+    have hrec := ih (K - 8) (by omega)
+    rw [Nat.mul_succ]
+    rw [show K - 8 - 8 * j = K - (8 * j + 8) from by omega] at hrec
+    exact reach_trans step hrec
+
+/-- **Full sufficiency for `1 + 14 = 7`** — the representative inexact-leg `≥ c`
+    config, closed through the all-ones hub.  Every `s, t ≥ M = 16` with `8 ∣ (t−s)`
+    are interreachable. -/
+theorem single_sufficiency_1147 :
+    ∀ s t, Mval [⟨1,14,7⟩] ≤ s → Mval [⟨1,14,7⟩] ≤ t →
+      gz [⟨1,14,7⟩] ∣ ((t : Int) - s) → Reach [⟨1,14,7⟩] [s] [t] := by
+  have hM : Mval [⟨1,14,7⟩] = 16 := by decide
+  have hgz : gz [⟨1,14,7⟩] = 8 := by decide
+  intro s t hs ht hg
+  rw [hM] at hs ht
+  rw [hgz] at hg
+  obtain ⟨r, hsr, hreach⟩ := scatter1147 s (by omega)
+  have hr16 : 16 ≤ r := by omega
+  -- residue: 8 ∣ (r − s)
+  have hrs : (8:Int) ∣ ((r : Int) - s) := by
+    have hd := reach_dvd hreach
+    rw [total_replicate_one, show total [s] = s from by simp, hgz] at hd
+    exact hd
+  obtain ⟨p, hp⟩ := hg
+  obtain ⟨q, hq⟩ := hrs
+  have htr : (8:Int) ∣ ((t : Int) - r) := ⟨p - q, by rw [Int.mul_sub, ← hp, ← hq]; omega⟩
+  have hpile : Reach [⟨1,14,7⟩] (List.replicate r 1) (List.replicate t 1) := by
+    rcases Nat.le_total r t with hle | hge
+    · have hnd : 8 ∣ (t - r) := by
+        have h1 : ((8:Nat) : Int) ∣ ((t - r : Nat) : Int) := by rw [Int.natCast_sub hle]; exact htr
+        exact Int.natCast_dvd_natCast.mp h1
+      obtain ⟨j, hj⟩ := hnd
+      have hu := onesUp1147 j r (by omega)
+      rwa [show r + 8 * j = t from by omega] at hu
+    · have hnd : 8 ∣ (r - t) := by
+        have h2 : ((8:Nat) : Int) ∣ ((r : Int) - t) := by
+          have hneg := dvd_neg' htr
+          rw [show -((t:Int) - r) = (r:Int) - t from by omega] at hneg; exact hneg
+        have h3 : ((8:Nat) : Int) ∣ ((r - t : Nat) : Int) := by rw [Int.natCast_sub hge]; exact h2
+        exact Int.natCast_dvd_natCast.mp h3
+      obtain ⟨j, hj⟩ := hnd
+      have hd := onesDown1147 j r (by omega)
+      rwa [show r - 8 * j = t from by omega] at hd
+  have hbuild : Reach [⟨1,14,7⟩] (List.replicate t 1) [t] := build1147 t (by omega)
+  exact reach_trans hreach (reach_trans hpile hbuild)
+
+/-- The notorious lie `1 + 14 = 7` is completely solvable above `M = 16`. -/
+theorem solvable_1_14_7 {s t : Nat} (hs : 16 ≤ s) (ht : 16 ≤ t)
+    (h : (8:Int) ∣ ((t:Int) - s)) : Reach [⟨1,14,7⟩] [s] [t] := by
+  refine single_sufficiency_1147 s t ?_ ?_ ?_
+  · have : Mval [⟨1,14,7⟩] = 16 := by decide
+    omega
+  · have : Mval [⟨1,14,7⟩] = 16 := by decide
+    omega
+  · have : gz [⟨1,14,7⟩] = 8 := by decide
+    rw [this]; exact h
+
+#print axioms YaStupid.build1147
+#print axioms YaStupid.scatter1147
+#print axioms YaStupid.single_sufficiency_1147
+#print axioms YaStupid.solvable_1_14_7
+
+end YaStupid

@@ -245,27 +245,38 @@ is **not** one. The difference is sharp (both BFS- and Lean-verified):
   *normal* merge (`≠{1,14}`) and `8→[4,4]` scatters cleanly. So each leg reaches an
   *inflated* ones-pile `1^(b+k·g)` (`g = 8`).
 
-`escape7_1147` (`[7] → 1^15`) and `scatter14_1147` (`[14] → 1^22`) prove this
-`sorry`-free (axioms `[propext, Quot.sound]` — not even choice). What is *false* is
-only the exact-count form `[14] → 1^14`: scattering must fire `≥ 1` false split, each
-adding `g`. So `1+14=7`’s legs satisfy the **inexact** leg-scatter fact
-`∃ r, b ≤ r ∧ Reach [b] (1^r)` — which is exactly what the hub needs; only
-`single_sufficiency_legGE`’s rigid `1^b` hypothesis missed it. Generalizing that
-hypothesis to the inexact form (gain `j·g` via the inflated legs, then shed `(j−1)·g`
-via the leg-free `loseGposGen` to net `+g`) closes `1+14=7` through the hub; the one
-extra wrinkle is `a = 1` (building `[c]` and `[b]` must dodge the `{1,14}` merge, the
-`gatherMin1` device). Left as a mechanical follow-up.
+`escape7_1147` (`[7] → 1^15`) and `scatter14_1147` (`[14] → 1^22`) prove the legs
+scatter (axioms `[propext, Quot.sound]`). What is *false* is only the exact-count
+`[14] → 1^14`: scattering fires `≥ 1` false split, each adding `g`, landing on
+`1^(b+k·g)`. So `1+14=7`’s legs satisfy the **inexact** leg-scatter fact, which is
+exactly what the hub needs.
+
+**`1+14=7` is now fully closed** (`single_sufficiency_1147`, `solvable_1_14_7`,
+`sorry`-free). The inexact-leg hub:
+- **`build1147`** builds any `[v]` from ones, dodging the `{1,14}` merge (only `v=15`
+  is blocked, built as `[13]+[2]`);
+- **`scatter1147`** scatters any `[v]` to some ones-pile (the `7`-escape at `v=7`,
+  halving elsewhere);
+- **`gainG1147`** gains `2g` (build `7`, `fsplit→{1,14}`, scatter the `14→1^22`),
+  **`loseG1147`** loses `g` (gather `14`, `fmerge{1,14}→7`, unlock via `unlock7`),
+  and **`gainOneG1147`** nets `+g` by gaining `2g` then shedding `g`;
+- then scatter `[s]→1^r`, walk by `g`, rebuild `[t]`.
 
 ## What is *not* (yet) mechanized
 
-The `a=b=c` trap diagonal is now **fully closed** (`single_sufficiency_kkk`, all
-`k ≥ 1`). What remains is the narrow band of `a+b>c` configs with a leg `≥ c` whose
-legs scatter only **inexactly** — they reach an inflated ones-pile `1^(b+k·g)`, not
-`1^b` — so the hub runs but `single_sufficiency_legGE`’s rigid `1^b` hypothesis does
-not fit. `1+14=7` is the representative (`escape7_1147`/`scatter14_1147` prove its
-legs scatter); closing it needs the *inexact-leg* hub (gain `j·g` then shed `(j−1)·g`
-via the leg-free `loseGposGen` to net `+g`) plus the `a=1` gather-dodge (`gatherMin1`).
-This is a mechanical follow-up, not a math gap: an exhaustive search
+Both families we set out to close are now **done**: the `a=b=c` trap diagonal
+(`single_sufficiency_kkk`, all `k ≥ 1`) and the notorious inexact-leg `1+14=7`
+(`single_sufficiency_1147`). Two complementary techniques are now fully demonstrated:
+the **non-hub `peelk`** route for traps (where no ball reaches ones) and the
+**inexact-leg hub** for configs whose legs scatter to inflated ones-piles `1^(b+k·g)`.
+
+What remains is to lift those two demonstrated techniques from their representatives
+to the whole `a+b>c`, leg-`≥ c` zoo uniformly — e.g. inexact legs with `2 ≤ a`
+(`2+14=7`), other locked-`c` traps off the diagonal (`3+3=2`). Each needs its own
+*scatter/escape* construction (the one genuinely config-specific ingredient; the
+builder, the gather, and the `±g` walk are already uniform), so a single theorem for
+the entire family is the remaining work. It is a construction gap, not a math gap: an
+exhaustive search
 ([`../test/counterexample-search.js`](../test/counterexample-search.js)) checks both
 pumps for `1+1=c` (`c = 3..9`) and every `a+b>c` with a leg `≥ c` (`2+10=7`,
 `2+2=2`, `1+14=7`, …) and finds **no counterexample anywhere** — `M = H+1` holds
@@ -293,18 +304,18 @@ single sum with `a + b < c` (`single_sufficiency_dneg` for `2 ≤ a, b`,
 (`single_sufficiency_dpos_full`, e.g. `3+3=5`, `4+4=5`, `6+6=7`). For `a+b>c` with
 a leg `≥ c`, `single_sufficiency_legGE` gives full sufficiency conditional on the
 two leg-scatter facts `la`, `lb`, and `solvable_2_10_7` discharges them for the
-concrete `2+10=7` (`b > c`). The genuine traps where the hub *cannot* run (a leg
-reaches no ones-pile at all) are exactly the diagonal `a=b=c`, and that is now
-**completely closed** by `single_sufficiency_kkk` (all `k ≥ 1`) via the non-hub
-`peelk` construction. The once-feared `1+14=7` is *not* a trap:
-`escape7_1147`/`scatter14_1147` prove its legs scatter to (inflated) ones-piles
-`1^15`, `1^22`, so the inexact-leg hub will cover it. The only instances still open
-are these inexactly-scattering leg-`≥ c` configs (`1+14=7`, pending the inexact-hub
-wiring), all exhaustively BFS-checked to contain NO counterexample
-(`test/counterexample-search.js`), so `M=H+1` is correct there too and only the Lean
-construction is missing.** Exhaustive search over the adversarial
-`{6+7=2, 6+8=3}` (where no `1` ever exists) likewise finds every in-range pump
-reachable.
+concrete `2+10=7` (`b > c`). The trap diagonal `a=b=c` — where no ball reaches ones
+— is **completely closed** by `single_sufficiency_kkk` (all `k ≥ 1`) via the non-hub
+`peelk` construction; and the inexact-leg config `1+14=7` (legs scatter to inflated
+piles `1^15`, `1^22`) is **completely closed** by `single_sufficiency_1147` via the
+inexact-leg hub (`build1147`/`scatter1147`/`gainOneG1147`). Both techniques —
+non-hub peeling for traps, inexact hub for scatterers — are thus mechanized on their
+representatives; lifting them uniformly to the whole `a+b>c` leg-`≥ c` zoo
+(remaining configs like `2+14=7`, `3+3=2`) is the outstanding construction work.** All
+such configs are exhaustively BFS-checked to contain NO counterexample
+(`test/counterexample-search.js`), so `M=H+1` is correct there too. Exhaustive search
+over the adversarial `{6+7=2, 6+8=3}` (where no `1` ever exists) likewise finds every
+in-range pump reachable.
 
 ## Check it yourself
 

@@ -387,11 +387,14 @@ the greedy scatter measure can fail); `solvable_2_10_7` discharges them for the
 concrete `2+10=7` (`b=10 > c=7`). The genuine traps where a leg never reaches ones
 (`la`/`lb` false) are exactly the diagonal `a=b=c`, now **completely closed** by
 **`single_sufficiency_kkk`** (all `k ≥ 1`) via the non-hub `peelk` construction (peel
-a locked `c`, fire one false move for `±g`, remerge). The only instances still open
-are `a+b>c`, leg `≥ c` configs whose legs scatter *inexactly* (to `1^(b+kg)`, not
-`1^b`) — `1+14=7` is the representative (`escape7_1147`/`scatter14_1147` prove its
-legs scatter); these need the inexact-leg hub, and are exhaustively BFS-verified to
-have no counterexample, so `M=H+1` holds there too. For
+a locked `c`, fire one false move for `±g`, remerge). The inexact-leg representative
+`1+14=7` (legs scatter to `1^(b+kg)`, not `1^b`) is likewise **completely closed** by
+**`single_sufficiency_1147`** via the inexact-leg hub (`build1147` dodges the `{1,14}`
+merge, `scatter1147` does the `7`-escape, `gainOneG1147` gains `2g` then sheds `g`).
+What remains is to lift these two demonstrated techniques uniformly to the rest of the
+`a+b>c` leg-`≥ c` zoo (e.g. `2+14=7`, `3+3=2`), each needing its own scatter/escape;
+all are exhaustively BFS-verified to have no counterexample, so `M=H+1` holds there
+too. For
 any *concrete* single sum the base is finite and dischargeable by BFS (the Classic
 pipeline), so every concrete instance is fully provable. See
 [`../lean/README.md`](../lean/README.md).
