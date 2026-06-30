@@ -5581,3 +5581,54 @@ theorem single_sufficiency_div (a b c ma mb : Nat) (hc2 : 2 ≤ c) (hac : c ≤ 
 #print axioms YaStupid.single_sufficiency_div
 
 end YaStupid
+
+
+namespace YaStupid
+
+/-! ### Closing the both-even `c=2` traps
+
+For `c = 2` with both legs even (`a = 2·ma`, `b = 2·mb`) the all-ones field is
+unreachable (tapping a `2` only yields `{a,b}`, both even — the pile never reaches
+an odd number).  The escape is the *copies-of-`2`* hub: `peelcG` peels a `2`, and
+`descendSeq` rebuilds the legs from `2`s.  Whenever `|a−b| ∉ {2,3}` (so the peel
+recursion is coincidence-free) this closes the config — e.g. `4+4=2`, `6+6=2`,
+`4+8=2`. -/
+
+/-- **Both-even `c=2` traps with `|a−b| ∉ {2,3}` are solvable.** -/
+theorem single_sufficiency_c2_even (a b ma mb : Nat) (ha : ma * 2 = a) (hb : mb * 2 = b)
+    (hma1 : 1 ≤ ma) (hmb1 : 1 ≤ mb) (hab : 2 < a + b)
+    (hsep : b ≠ a + 2 ∧ b ≠ a + 2 + 1 ∧ a ≠ b + 2 ∧ a ≠ b + 2 + 1) :
+    ∀ s t, Mval [⟨a,b,2⟩] ≤ s → Mval [⟨a,b,2⟩] ≤ t →
+      gz [⟨a,b,2⟩] ∣ ((t : Int) - s) → Reach [⟨a,b,2⟩] [s] [t] := by
+  have hpeel := peelcG a b 2 (by omega) (by omega) (by omega) (by omega) hsep
+  exact single_sufficiency_div a b 2 ma mb (by omega) (by omega) (by omega) hab ha hb hma1 hmb1 hpeel
+
+/-- The trap `4 + 4 = 2` (both legs even; no ones reachable) is solvable above `M = 9`. -/
+theorem solvable_4_4_2 {s t : Nat} (hs : 9 ≤ s) (ht : 9 ≤ t)
+    (h : (6:Int) ∣ ((t:Int) - s)) : Reach [⟨4,4,2⟩] [s] [t] := by
+  refine single_sufficiency_c2_even 4 4 2 2 (by omega) (by omega) (by omega) (by omega) (by omega)
+    ⟨by omega, by omega, by omega, by omega⟩ s t ?_ ?_ ?_
+  · have : Mval [⟨4,4,2⟩] = 9 := by decide
+    omega
+  · have : Mval [⟨4,4,2⟩] = 9 := by decide
+    omega
+  · have : gz [⟨4,4,2⟩] = 6 := by decide
+    rw [this]; exact h
+
+/-- The trap `4 + 8 = 2` (both even, `|a−b| = 4`) is solvable above `M = 13`. -/
+theorem solvable_4_8_2 {s t : Nat} (hs : 13 ≤ s) (ht : 13 ≤ t)
+    (h : (10:Int) ∣ ((t:Int) - s)) : Reach [⟨4,8,2⟩] [s] [t] := by
+  refine single_sufficiency_c2_even 4 8 2 4 (by omega) (by omega) (by omega) (by omega) (by omega)
+    ⟨by omega, by omega, by omega, by omega⟩ s t ?_ ?_ ?_
+  · have : Mval [⟨4,8,2⟩] = 13 := by decide
+    omega
+  · have : Mval [⟨4,8,2⟩] = 13 := by decide
+    omega
+  · have : gz [⟨4,8,2⟩] = 10 := by decide
+    rw [this]; exact h
+
+#print axioms YaStupid.single_sufficiency_c2_even
+#print axioms YaStupid.solvable_4_4_2
+#print axioms YaStupid.solvable_4_8_2
+
+end YaStupid
