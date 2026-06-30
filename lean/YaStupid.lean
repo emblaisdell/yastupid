@@ -3191,3 +3191,90 @@ theorem solvable_2_2_2 {s t : Nat} (hs : 5 ≤ s) (ht : 5 ≤ t)
 #print axioms YaStupid.solvable_2_2_2
 
 end YaStupid
+
+
+namespace YaStupid
+
+/-! ### `1 + 14 = 7`: the legs *do* scatter to ones (the greedy measure just loops)
+
+`1+14=7` was mischaracterized as a genuine trap like `2+2=2`.  It is not.  In
+`2+2=2` the value `2 = c` is truly indestructible and `[n]` reaches **no** ones-pile.
+In `1+14=7` the greedy "always split the max" measure loops
+(`14 → [7,7]`, `7 → {1,14}`, `14 → [7,7]`, …), but the value `7` **escapes**:
+`fsplit 7 → {1,14}` produces a `1`, and `{7,1} → 8` is a *normal* merge (`≠ {1,14}`),
+with `8 → [4,4]` scattering cleanly.  So each leg reaches an *inflated* ones-pile
+`1^(b + k·g)` (here `g = 8`): `[7] → 1^15`, `[14] → 1^22`.  What is false is only the
+exact-count form `[14] → 1^14` (scattering must fire `≥ 1` false split, each adding
+`g`).  Hence the hub *can* run on `1+14=7` given the natural *inexact* leg-scatter
+facts; only `single_sufficiency_legGE`'s rigid `1^b` hypothesis missed it. -/
+
+/-- Pull one `1` out of a `(k+1)`-ones pile sitting in front of an `x`, to merge it
+    with `x`: `1^(k+1) ++ [x] ~ 1 :: x :: 1^k`. -/
+theorem perm_pull (k x : Nat) :
+    (List.replicate (k + 1) 1 ++ [x]).Perm (1 :: x :: List.replicate k 1) := by
+  rw [List.replicate_succ]
+  exact (List.perm_append_comm (l₁ := List.replicate k 1) (l₂ := [x])).cons 1
+
+/-- Scatter `[8]` to ones in `1+14=7`: `8 → [4,4]`, each `4 < 7` scatters cleanly. -/
+theorem sc8_1147 : Reach [⟨1,14,7⟩] [8] (List.replicate 8 1) := by
+  have hsp : Reach [⟨1,14,7⟩] [8] [4, 4] :=
+    reach_move [] (Local.nsplit 8 (by omega)
+      (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+  have sc4 : Reach [⟨1,14,7⟩] [4] (List.replicate 4 1) := scatterClean 1 14 7 4 (by omega) (by omega)
+  have s2 : Reach [⟨1,14,7⟩] [4, 4] (List.replicate 4 1 ++ [4]) := by
+    have := reach_frame [4] sc4; simpa using this
+  have s3 : Reach [⟨1,14,7⟩] (List.replicate 4 1 ++ [4]) (List.replicate 4 1 ++ List.replicate 4 1) := by
+    have := reach_frame_left (List.replicate 4 1) sc4; simpa using this
+  rw [replicate_one_add] at s3
+  exact reach_trans hsp (reach_trans s2 s3)
+
+/-- **The `7`-escape**: `[7] → 1^15` in `1+14=7`.  `fsplit 7→{1,14}`, `nsplit 14→[7,7]`,
+    `{1,7}→8` (normal!), scatter the `8`, merge a fresh `1` onto the surviving `7`,
+    scatter the resulting `8`.  No greedy loop — the `{7,1}→8` step breaks it. -/
+theorem escape7_1147 : Reach [⟨1,14,7⟩] [7] (List.replicate 15 1) := by
+  have s1 : Reach [⟨1,14,7⟩] [7] [1, 14] := by
+    have hm := reach_move [] (Local.fsplit ⟨1,14,7⟩ (List.mem_singleton.2 rfl))
+      (List.Perm.refl _) (Reach.refl _); simpa using hm
+  have s2 : Reach [⟨1,14,7⟩] [1, 14] [1, 7, 7] := by
+    have hns : Reach [⟨1,14,7⟩] [14] [7, 7] :=
+      reach_move [] (Local.nsplit 14 (by omega)
+        (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+    have := reach_frame_left [1] hns; simpa using this
+  have hcc : ∀ f ∈ ([⟨1,14,7⟩] : Config), ¬ ((f.a = 1 ∧ f.b = 7) ∨ (f.a = 7 ∧ f.b = 1)) := by
+    simp only [List.mem_singleton, forall_eq]; omega
+  have s3 : Reach [⟨1,14,7⟩] [1, 7, 7] [8, 7] := by
+    have hm := reach_move [7] (Local.nmerge 1 7 hcc) (List.Perm.refl _) (Reach.refl _)
+    simpa using hm
+  have s4 : Reach [⟨1,14,7⟩] [8, 7] (List.replicate 8 1 ++ [7]) := by
+    have := reach_frame [7] sc8_1147; simpa using this
+  have s5 : Reach [⟨1,14,7⟩] (List.replicate 8 1 ++ [7]) ([8] ++ List.replicate 7 1) := by
+    have hm := reach_move (List.replicate 7 1) (Local.nmerge 1 7 hcc) (perm_pull 7 7) (Reach.refl _)
+    simpa using hm
+  have s6 : Reach [⟨1,14,7⟩] ([8] ++ List.replicate 7 1) (List.replicate 15 1) := by
+    have := reach_frame (List.replicate 7 1) sc8_1147
+    rw [replicate_one_add] at this; simpa using this
+  exact reach_trans s1 (reach_trans s2 (reach_trans s3 (reach_trans s4 (reach_trans s5 s6))))
+
+/-- **The leg `14` scatters**: `[14] → 1^22` in `1+14=7`.  `14 → [7,7]`, escape one
+    `7` to `1^15`, then merge a fresh `1` onto the other `7` and scatter that `8`.
+    This is the inexact `lb` the hub needs — `1^(14 + 1·8)`, *not* `1^14`. -/
+theorem scatter14_1147 : Reach [⟨1,14,7⟩] [14] (List.replicate 22 1) := by
+  have t1 : Reach [⟨1,14,7⟩] [14] [7, 7] :=
+    reach_move [] (Local.nsplit 14 (by omega)
+      (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+  have t2 : Reach [⟨1,14,7⟩] [7, 7] (List.replicate 15 1 ++ [7]) := by
+    have := reach_frame [7] escape7_1147; simpa using this
+  have hcc : ∀ f ∈ ([⟨1,14,7⟩] : Config), ¬ ((f.a = 1 ∧ f.b = 7) ∨ (f.a = 7 ∧ f.b = 1)) := by
+    simp only [List.mem_singleton, forall_eq]; omega
+  have t3 : Reach [⟨1,14,7⟩] (List.replicate 15 1 ++ [7]) ([8] ++ List.replicate 14 1) := by
+    have hm := reach_move (List.replicate 14 1) (Local.nmerge 1 7 hcc) (perm_pull 14 7) (Reach.refl _)
+    simpa using hm
+  have t4 : Reach [⟨1,14,7⟩] ([8] ++ List.replicate 14 1) (List.replicate 22 1) := by
+    have := reach_frame (List.replicate 14 1) sc8_1147
+    rw [replicate_one_add] at this; simpa using this
+  exact reach_trans t1 (reach_trans t2 (reach_trans t3 t4))
+
+#print axioms YaStupid.escape7_1147
+#print axioms YaStupid.scatter14_1147
+
+end YaStupid

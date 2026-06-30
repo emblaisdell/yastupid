@@ -226,14 +226,36 @@ helper **`peel2 : [v] → [2, v-2]`** (peel a `2` off any `v ≥ 3`) drives both
 only. The same peel-a-locked-`c`-then-false-move template generalizes to the whole
 `a=b=c` diagonal and to locked-`c` loopers like `1+14=7`.
 
+### `1+14=7`: the legs *do* scatter — the greedy measure just loops (`escape7_1147`)
+
+`1+14=7` was wrongly lumped with `2+2=2` as a "leg cannot scatter to ones" trap. It
+is **not** one. The difference is sharp (both BFS- and Lean-verified):
+
+- in `2+2=2`, `[n]` reaches **no** ones-pile for any count — `2 = c` is genuinely
+  indestructible;
+- in `1+14=7`, the *greedy* "split the max" measure loops (`14→[7,7]`, `7→{1,14}`, …),
+  but the value `7` **escapes**: `fsplit 7→{1,14}` yields a `1`, then `{7,1}→8` is a
+  *normal* merge (`≠{1,14}`) and `8→[4,4]` scatters cleanly. So each leg reaches an
+  *inflated* ones-pile `1^(b+k·g)` (`g = 8`).
+
+`escape7_1147` (`[7] → 1^15`) and `scatter14_1147` (`[14] → 1^22`) prove this
+`sorry`-free (axioms `[propext, Quot.sound]` — not even choice). What is *false* is
+only the exact-count form `[14] → 1^14`: scattering must fire `≥ 1` false split, each
+adding `g`. So `1+14=7`’s legs satisfy the **inexact** leg-scatter fact
+`∃ r, b ≤ r ∧ Reach [b] (1^r)` — which is exactly what the hub needs; only
+`single_sufficiency_legGE`’s rigid `1^b` hypothesis missed it. Generalizing that
+hypothesis to the inexact form (gain `j·g` via the inflated legs, then shed `(j−1)·g`
+via the leg-free `loseGposGen` to net `+g`) closes `1+14=7` through the hub; the one
+extra wrinkle is `a = 1` (building `[c]` and `[b]` must dodge the `{1,14}` merge, the
+`gatherMin1` device). Left as a mechanical follow-up.
+
 ## What is *not* (yet) mechanized
 
-What remains is a thin **measure-zero** set of *other* loopers `a+b>c` where a leg
-cannot scatter to ones, so `la`/`lb` are *false* and the hub cannot run — e.g.
-`1+14=7` (`14 = 2c` loops), and `a=b=c=k` for `k ≥ 3`. The cleanest representative,
-`2+2=2`, is now **closed** by the non-hub `peel2` route above; the others follow the
-same template (peel a locked `c`, fire one false move for `±g`, remerge) and are left
-as mechanical follow-ups. All are **BFS-verified solvable**: an exhaustive search
+The genuinely-open set is now just the **true traps** `a=b=c=k` for `k ≥ 3` (and
+`1+14=7` pending the inexact-hub wiring above). For the `a=b=c` traps the hub
+*provably* cannot run, but the non-hub `peel2` route that closed `2+2=2` generalizes
+directly (peel a locked `c`, fire one false move for `±g`, remerge). All are
+**BFS-verified solvable**: an exhaustive search
 ([`../test/counterexample-search.js`](../test/counterexample-search.js)) checks both
 pumps for `1+1=c` (`c = 3..9`) and every `a+b>c` with a leg `≥ c` (`2+10=7`,
 `2+2=2`, `1+14=7`, …) and finds **no counterexample anywhere** — `M = H+1` holds
@@ -261,14 +283,17 @@ single sum with `a + b < c` (`single_sufficiency_dneg` for `2 ≤ a, b`,
 (`single_sufficiency_dpos_full`, e.g. `3+3=5`, `4+4=5`, `6+6=7`). For `a+b>c` with
 a leg `≥ c`, `single_sufficiency_legGE` gives full sufficiency conditional on the
 two leg-scatter facts `la`, `lb`, and `solvable_2_10_7` discharges them for the
-concrete `2+10=7` (`b > c`). For the loopers where the hub *cannot* run (leg never
-scatters to ones), `single_sufficiency_222` closes `2+2=2` by a separate non-hub
-`peel2` construction. The only instances still open are the remaining loopers of
-that kind (`a=b=c=k` for `k≥3`, `1+14=7`), which follow the same peel template and
-are exhaustively BFS-checked to contain NO counterexample
-(`test/counterexample-search.js`), so `M=H+1` is correct there too and only the Lean
-construction is missing.** Exhaustive search over the adversarial `{6+7=2, 6+8=3}`
-(where no `1` ever exists) likewise finds every in-range pump reachable.
+concrete `2+10=7` (`b > c`). For the genuine traps where the hub *cannot* run (a leg
+reaches no ones-pile at all, `a=b=c`), `single_sufficiency_222` closes `2+2=2` by a
+separate non-hub `peel2` construction that generalizes to the whole diagonal. The
+once-feared `1+14=7` is *not* such a trap: `escape7_1147`/`scatter14_1147` prove its
+legs scatter to (inflated) ones-piles `1^15`, `1^22`, so the inexact-leg hub covers
+it. The only instances still open are these (`a=b=c=k` for `k≥3`, and `1+14=7`
+pending the inexact-hub wiring), all exhaustively BFS-checked to contain NO
+counterexample (`test/counterexample-search.js`), so `M=H+1` is correct there too and
+only the Lean construction is missing.** Exhaustive search over the adversarial
+`{6+7=2, 6+8=3}` (where no `1` ever exists) likewise finds every in-range pump
+reachable.
 
 ## Check it yourself
 
