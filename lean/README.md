@@ -313,21 +313,48 @@ gathers two `[a]`s, false-merges `{a,a}→c`.  **`single_sufficiency_aac`** clos
 `⟨a,a,c⟩` with `c ∣ a`, `c < a`, `3 ≤ c` — including all `a=b` `c·2^k` traps (`6+6=3`,
 `10+10=5`, `12+12=3`, …).  `solvable_6_6_3` is a concrete corollary.
 
+### The `a ≠ b` `c·2^k` traps, closed (`single_sufficiency_trap`)
+
+The genuine `a ≠ b` traps `⟨c·2^i, c·2^j, c⟩` (`i ≠ j`, `c ≥ 3` — `3+6=3`, `6+12=3`,
+`3+12=3`, …) are closed by generalizing the `a=b` escape to `⟨a,b,c⟩`.  A **parameterized
+peeler** `hpeel : ∀ v ≥ c+1, [v] → [c, v−c]` drives the climb (peel `c`, false-split,
+merge) and descend (peel `2^i+2^j` copies of `c`, rebuild `[a]`,`[b]`, false-merge);
+the rebuild uses **`powMerge`** (binary doubling `{x,x}→2x`, always legal since `a ≠ b`).
+The peeler is `peelcG` (generic, recursion coincidence-free when `|a−b| ∉ {c,c+1}`); the
+lone pathological shape `⟨c,2c,c⟩` (`b = a+c`) — where the recursion *does* hit `{c,2c}`
+at `v = 4c` — is handled by `peelc_c2c`, which routes that single value through the
+bespoke 11-move **`peel4c`** (`[4c] → [c,3c]`, dipping to total `8c`).  `reach_swap`
+makes the closure order-independent.  Worked: `solvable_3_6_3`, `solvable_6_12_3`.
+
+### `c = 2` both-even traps, closed (`single_sufficiency_c2_both_even`)
+
+For `c = 2` the all-ones field is generally unreachable.  When **both legs are even**
+(`a = 2·ma`, `b = 2·mb`, legs `≥ 3`) the *copies-of-`2`* hub closes the config: the
+uniform peeler **`peelc2`** peels a `2` off any `v ≥ 3` (when its recursion would hit
+`{a,b}`, forcing `|a−b| ∈ {2,3}`, it peels a `2` off *both* halves and merges the two
+near-equal residues, which differ by `≤ 1` and so are never `{a,b}`), and the
+**`descendSeq`** sequential gather (`gatherCvalG`, `{c,kc}→(k+1)c`, always safe since
+each intermediate `kc` is below the leg) rebuilds the legs.  Closes every both-even
+`c=2` trap including the adjacent `b=a+2` case (`4+4=2`, `4+6=2`, `4+8=2`, `6+6=2`, …).
+`single_sufficiency_div` is the general divisible-leg form (`c ∣ a`, `c ∣ b`, `c ≥ 2`).
+
 ## What is *not* (yet) mechanized
 
-The open set has narrowed to two pathological, measure-zero families:
-- **`a ≠ b` `c·2^k` traps** — `⟨c·2^i, c·2^j, c⟩`, `i ≠ j`, `c ≥ 3` (`3+6=3`, `6+12=3`,
-  …).  Here even `peelc` fails: in e.g. `⟨c,2c,c⟩` (`b = a+c`) the false pair `{c,2c}`
-  pervades, and `[4c] → [c,3c]` is genuinely *unreachable* (`3c` needs the false merge),
-  so individual values can't be peeled and only whole-pump ad-hoc paths exist.
-- **`c = 2`** (`3+3=2`, …) — the unit bump fails (`c+1 = 3` re-splits to include `2`),
-  so even with units `c` can't be cleared.
+One family remains open in the mechanization (BFS-verified solvable — see below):
+- **`c = 2` with an *odd* leg** (`3+3=2`, `3+4=2`, `3+5=2`, … legs `≥ 3`).  Climb is
+  closed (`peelc2` is the peeler), but **descend** must rebuild an *odd* leg, which
+  needs a `1` (no leg is `1`, and a `2` is locked — it only false-splits to `{a,b}`).
+  A `1` is freely available by normal moves when `n+g` is *not* a power of `2`, but
+  when `n+g = 2^k` the pile scatters to pure `2`s and a `1` requires a balanced
+  false-split/merge excursion.  A uniform "peel an arbitrary value" lemma would close
+  it; that is the outstanding construction.  (Configs with a leg `= 2 = c` are a
+  further degenerate sliver.)
 
 This is a construction gap, not a math gap: an exhaustive search
-([`../test/counterexample-search.js`](../test/counterexample-search.js)) checks both
-pumps for `1+1=c` (`c = 3..9`) and every `a+b>c` with a leg `≥ c` (`2+10=7`, `2+14=7`,
-`2+2=2`, `1+14=7`, `3+3=2`, `5+5=3`, `6+6=3`, `7+7=3`, `8+9=4`, `15+15=4`, …) and finds
-**no counterexample anywhere** — `M = H+1` holds universally.
+([`../test/counterexample-search.js`](../test/counterexample-search.js)) plus targeted
+bidirectional BFS over the `c·2^k` traps and the whole `c=2` family (every pump gap
+`[n] ↔ [n+g]` for many `n`) find **no counterexample anywhere** — `M = H+1` holds
+universally, including for the open odd-leg `c=2` configs.
 
 Equivalently phrased — the two one-step pumps for an **arbitrary** configuration:
 
@@ -351,18 +378,20 @@ single sum with `a + b < c` (`single_sufficiency_dneg` for `2 ≤ a, b`,
 (`single_sufficiency_dpos_full`, e.g. `3+3=5`, `4+4=5`, `6+6=7`). For `a+b>c` with
 a leg `≥ c`, `single_sufficiency_legGE` gives full sufficiency conditional on the
 two leg-scatter facts `la`, `lb`, and `solvable_2_10_7` discharges them for the
-concrete `2+10=7` (`b > c`). The trap diagonal `a=b=c` — where no ball reaches ones
-— is **completely closed** by `single_sufficiency_kkk` (all `k ≥ 1`) via the non-hub
-`peelk` construction; and the inexact-leg config `1+14=7` (legs scatter to inflated
-piles `1^15`, `1^22`) is **completely closed** by `single_sufficiency_1147` via the
-inexact-leg hub (`build1147`/`scatter1147`/`gainOneG1147`). Both techniques —
-non-hub peeling for traps, inexact hub for scatterers — are thus mechanized on their
-representatives; lifting them uniformly to the whole `a+b>c` leg-`≥ c` zoo
-(remaining configs like `2+14=7`, `3+3=2`) is the outstanding construction work.** All
-such configs are exhaustively BFS-checked to contain NO counterexample
-(`test/counterexample-search.js`), so `M=H+1` is correct there too. Exhaustive search
-over the adversarial `{6+7=2, 6+8=3}` (where no `1` ever exists) likewise finds every
-in-range pump reachable.
+concrete `2+10=7` (`b > c`). The higher bands are closed uniformly by the `Scat`
+predicate (`single_sufficiency_scat` / `single_sufficiency_oneScat` — one non-`c·2^k`
+leg suffices), and the genuine `c·2^k` traps are now closed too: the diagonal `a=b=c`
+(`single_sufficiency_kkk`), the `a=b` traps (`single_sufficiency_aac`), and the
+`a ≠ b` traps `⟨c·2^i,c·2^j,c⟩` (`single_sufficiency_trap`, including the pathological
+`⟨c,2c,c⟩` via `peel4c`). For `c = 2`, every both-even config (legs `≥ 3`) is closed by
+the copies-of-`2` hub (`single_sufficiency_c2_both_even`). The single remaining open
+family is `c = 2` with an odd leg, where descend must build an odd leg from a `1` that
+is only freely available when `n+g` is not a power of `2`.** All configs are
+exhaustively BFS-checked to contain NO counterexample
+(`test/counterexample-search.js`, plus targeted bidirectional BFS over the traps and
+the whole `c=2` family), so `M=H+1` is correct there too. Exhaustive search over the
+adversarial `{6+7=2, 6+8=3}` (where no `1` ever exists) likewise finds every in-range
+pump reachable.
 
 ## Check it yourself
 
