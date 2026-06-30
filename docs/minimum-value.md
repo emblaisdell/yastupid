@@ -362,9 +362,19 @@ Classical.choice, Quot.sound`).
 
   `classic_sufficiency_symbolic` re-derives Classic from this with **no BFS**.
 
-The remaining open pieces are (1) the `min(a,b)=1` edge of `a + b < c` (where
-building a `c` from ones must route around the single forbidden merge
-`{1, max(a,b)} = {a,b}`, and `a=b=1` is special), and (2) the dual `a + b > c`
-case (e.g. `2+2=2`). Both are uniform but case-heavy. For any *concrete* single sum
-the base is finite and dischargeable by BFS (the Classic pipeline), so every
-concrete instance is fully provable. See [`../lean/README.md`](../lean/README.md).
+- **`climb_dpos`** discharges the **climb pump for the dual case `a+b > c`** with
+  legs in `[2,c)` (e.g. `3+3=5`, `3+4=6`). Here the roles swap (climb harvests a `c`
+  and false-*splits* it; descend forms `{a,b}` and false-*merges* it), but the stuck
+  cluster is again `{2c−1, 2c, 2c+1}`, handled by `climb_2cm1_pos/climb_2c_pos/
+  climb_2cp1_pos`; clean values use `climbCleanLow_pos`. The descend clean range is
+  done (`descendCleanLow_pos`).
+
+The remaining open pieces are (1) the descend *cluster* for `a+b>c` (the three
+starts `2c−1,2c,2c+1`, which a BFS witness shows need a non-local route — climbing
+the total and re-forming pairs — and whose high start range can hold several stuck
+clusters); (2) the `min(a,b)=1` edge of `a + b < c` (build-a-`c` must dodge
+`{1, max(a,b)} = {a,b}`, with `a=b=1` special); and (3) the corner families
+(`a+b>c` with a leg `≥ c`, or `c ≤ (a+b)/2`, e.g. `2+2=2`). All are uniform but
+case-heavy. For any *concrete* single sum the base is finite and dischargeable by
+BFS (the Classic pipeline), so every concrete instance is fully provable. See
+[`../lean/README.md`](../lean/README.md).
