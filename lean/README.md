@@ -291,30 +291,34 @@ the first unit) closes:
 - **`⟨a,b,c⟩`, `2 ≤ a < 2c`, `a ≠ c`, `c ≤ b`** — `single_sufficiency_g` (e.g. `5+5=3`,
   `2+14=7`), the small leg `< 2c` bootstrapping; the big leg is any size.
 
-A further band — **both legs in `[2c+1, 4c-2]`** — is closed by
-`single_sufficiency_band` (e.g. `7+7=3`): such a leg halves into a `(c,2c)` piece
-(self-scattering via `scatSmall`) and a `[c,2c-1]` piece (`scatBigR`, the value-first
-reservoir scatter).  So **every leg-`≥c` config with both legs `< 4c-2`** (`c ≥ 3`) is
-done.
+### All bands at once via `Scat`, and one `Scat` leg suffices
+
+The band-by-band recursion is captured once by the inductive **`Scat c v`** ("`v`
+halves — floor or ceil — into the window `(c,2c)`"), which holds for **every `v`
+except the fixed points `c·2^k`**.  `scatStandaloneScat` scatters any `Scat` value to
+`1^v` by induction.  Better, **`scatAll`** shows that once `c` itself scatters, *every*
+`[v]` does — and `c` scatters as soon as **one** leg is `Scat`.  So
+**`single_sufficiency_oneScat`** closes every `2 ≤ a,b`, `c ≥ 3`, `c < a+b` config with
+**at least one leg not of the form `c·2^k`** — the other leg may be anything, even
+`c·2^k` (e.g. `8+9=4`, where `8 = 2c`).  This subsumes all the families above.
 
 ## What is *not* (yet) mechanized
 
-The open set is now `a+b>c`, `c ≥ 3` with a leg `≥ 4c-1`, plus `c = 2`. Structurally:
-- **higher-band scatterers** (legs `≥ 4c-1` not of the form `c·2^k`) — the same
-  `scatSmall`/`scatBigR` recipe recurses one more halving per band; closing all bands
-  at once needs a single recursion that provably avoids the `c·2^k` values (the only
-  halving fixed points), which is mechanical but unbounded as written band-by-band;
-- **`c·2^k` traps** (e.g. `6+6=3`, `12+12=3`) — like `a=b=c` scaled: `[M]` reaches *no*
-  ones-pile, so the hub cannot run; `peelk`'s idea applies but the off-diagonal
-  descend is genuinely ad-hoc (BFS paths share no uniform shape);
-- **`c = 2`** (e.g. `3+3=2`) — the bump fails (`c+1 = 3` re-splits to include `2`), so
-  even with units `c` can't be cleared.
+The open set is now exactly two structured, measure-zero families:
+- **`c·2^k` traps** — `a+b>c`, `c ≥ 3`, **both** legs of the form `c·2^k`
+  (`6+6=3`, `c+2c=c`, `12+12=3`, …): the scaled copies of `a=b=c`.  No leg is `Scat`,
+  so neither leg seeds a unit and `[M]` reaches *no* ones-pile — the hub cannot run.
+  `peelk` closed the base case `a=b=c`; the general descend (needing an `{a,a}` from an
+  `nsplit 2a`, where `2a > max(a,b)` can't be built) is genuinely ad-hoc (BFS paths
+  share no uniform shape), the same hardness `peelk` had to absorb by hand.
+- **`c = 2`** (`3+3=2`, …) — the unit bump fails (`c+1 = 3` re-splits to include `2`),
+  so even with units `c` can't be cleared.
 
 This is a construction gap, not a math gap: an exhaustive search
 ([`../test/counterexample-search.js`](../test/counterexample-search.js)) checks both
 pumps for `1+1=c` (`c = 3..9`) and every `a+b>c` with a leg `≥ c` (`2+10=7`, `2+14=7`,
-`2+2=2`, `1+14=7`, `3+3=2`, `5+5=3`, `7+7=3`, …) and finds **no counterexample
-anywhere** — `M = H+1` holds universally.
+`2+2=2`, `1+14=7`, `3+3=2`, `5+5=3`, `7+7=3`, `8+9=4`, `15+15=4`, …) and finds **no
+counterexample anywhere** — `M = H+1` holds universally.
 
 Equivalently phrased — the two one-step pumps for an **arbitrary** configuration:
 
