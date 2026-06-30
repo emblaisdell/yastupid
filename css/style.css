@@ -62,6 +62,8 @@ body::before{
 }
 #menuBtn{top:calc(var(--safe-t) + 12px);left:12px;}
 #newBtn{top:calc(var(--safe-t) + 12px);right:12px;}
+#muteBtn{top:calc(var(--safe-t) + 12px);right:72px;}
+#muteBtn.muted{opacity:.7;}
 
 /* ----------------------------- goal plaque -------------------------------- */
 .plaque{

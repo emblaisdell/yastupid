@@ -174,11 +174,58 @@ function updateCamera(dt) {
   camY = TOP_MARGIN + (VH - TOP_MARGIN - BOT_MARGIN) / 2;
 }
 
+/* -------------------------------- sound ----------------------------------- */
+// Bubbly blips synthesised on the fly — no asset files, no dependencies.
+let actx = null;
+let muted = localStorage.getItem('yastupid_muted') === '1';
+function audio() {
+  // 'playback' tells iOS/WebKit to keep playing even with the ringer/silent switch off.
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (_) {}
+  if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) {} }
+  if (actx && actx.state === 'suspended') actx.resume();
+  return actx;
+}
+// a short bubble blip: a sine swept between two pitches with a fast pluck envelope
+function blip(f0, f1, dur, vol) {
+  if (muted) return;
+  const ac = audio(); if (!ac) return;
+  const t = ac.currentTime;
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(f0, t);
+  o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(ac.destination);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+// a soft, round "bloop" note: pure sine with a gentle attack, low-passed to keep it warm
+function note(freq, delay, dur, vol) {
+  if (muted) return;
+  const ac = audio(); if (!ac) return;
+  const t = ac.currentTime + delay;
+  const o = ac.createOscillator(), g = ac.createGain(), lp = ac.createBiquadFilter();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(freq * 0.92, t);
+  o.frequency.exponentialRampToValueAtTime(freq, t + 0.05);   // tiny upward bloop, not a flat bell
+  lp.type = 'lowpass'; lp.frequency.value = 1100; lp.Q.value = 0.6;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.03);          // softer attack tames the "ding"
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(lp).connect(ac.destination);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+function popSound()   { blip(380, 920, 0.09, 0.22); }   // split: light upward "pop"
+// fuse: a single soft note that bloops upward — two becoming one, in one breath
+function mergeSound() { note(440.00, 0, 0.24, 0.23); }
+
 /* ------------------------------ operations -------------------------------- */
 function split(ball) {
   if (won) return;
   const kids = splitValue(ball.value, config.fs);
   if (!kids) { ball.pulse = 1.5; ball.vx += (Math.random() - .5) * 80; toast("A 1 can't split!"); return; }
+  popSound();
   const idx = balls.indexOf(ball); if (idx >= 0) balls.splice(idx, 1);
   const ang = Math.random() * Math.PI * 2;
   for (let k = 0; k < kids.length; k++) {
@@ -190,6 +237,7 @@ function split(ball) {
   moves++; afterChange();
 }
 function fuse(A, B) {
+  mergeSound();
   const value = mergeValue(A.value, B.value, config.fs);
   const x = (A.x + B.x) / 2, y = (A.y + B.y) / 2;
   balls = balls.filter(b => b !== A && b !== B);
@@ -294,6 +342,7 @@ function pointAt(wx, wy) {
   return null;
 }
 canvas.addEventListener('pointerdown', e => {
+  audio();   // resume the audio context on the user gesture (browsers require this)
   if (!config || won) return;
   const { x, y } = pos(e); const b = pointAt(x, y); if (!b) return;
   drag = { id: b.id, sx: x, sy: y, x, y, moved: false };
@@ -418,6 +467,28 @@ function showWin() {
 /* ------------------------------ UI wiring --------------------------------- */
 el('menuBtn').onclick = openMenu;
 el('closeMenu').onclick = hideMenu;
+el('menu').addEventListener('pointerdown', e => { if (e.target === el('menu')) hideMenu(); });
+// Same speaker body in both states; only the right-hand glyph (waves vs. slash) differs.
+const SPK_BODY = '<path d="M3 9.5v5h3.2L11 18.5V5.5L6.2 9.5z" fill="currentColor"/>';
+const SPK_WAVES = '<path d="M14 9.2a4 4 0 0 1 0 5.6M16.6 7a7 7 0 0 1 0 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>';
+const SPK_SLASH = '<path d="M14.5 9.5l5 5M19.5 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>';
+function speakerIcon(off) {
+  return `<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">${SPK_BODY}${off ? SPK_SLASH : SPK_WAVES}</svg>`;
+}
+function renderMute() {
+  const b = el('muteBtn');
+  b.innerHTML = speakerIcon(muted);
+  b.classList.toggle('muted', muted);
+  b.setAttribute('aria-pressed', String(muted));
+  b.setAttribute('aria-label', muted ? 'Unmute sound' : 'Mute sound');
+}
+el('muteBtn').onclick = () => {
+  muted = !muted;
+  localStorage.setItem('yastupid_muted', muted ? '1' : '0');
+  renderMute();
+  if (!muted) popSound();   // little confirmation blip when turning sound back on
+};
+renderMute();
 el('newBtn').onclick = newRandomLevel;
 el('newMenuBtn').onclick = newRandomLevel;
 el('againBtn').onclick = newRandomLevel;
