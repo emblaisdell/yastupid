@@ -4311,3 +4311,116 @@ theorem solvable_1_10_5 {s t : Nat} (hs : 12 ≤ s) (ht : 12 ≤ t)
 #print axioms YaStupid.solvable_1_10_5
 
 end YaStupid
+
+
+namespace YaStupid
+
+/-! ### Closing `⟨a,b,c⟩` with `2 ≤ a < 2c`, `a ≠ c`, `c ≤ b` (small leg below `2c`)
+
+Generalizes `single_sufficiency_ac` (`a < c`) to `a < 2c`: the small leg now only
+needs to lie below `2c` (so it halves into a sub-`c` value plus a `≤ c` value the
+reservoir bumps), giving the bootstrap unit.  `scatBig` then scatters the big leg `b`
+(any `b ≥ c`).  Covers e.g. `5+5=3`, `5+8=3`. -/
+
+/-- Scatter a leg-value `v < 2c` (`v ≠ c`) to `1^v` exactly: `v < c` clean, else halve
+    (`⌊v/2⌋ < c`) and `scatBig` the `≤ c` half off that reservoir. -/
+theorem scatSmall (a b c : Nat) (hc3 : 3 ≤ c) (hsafe : ¬ ((a = 1 ∧ b = c) ∨ (a = c ∧ b = 1))) :
+    ∀ v, 1 ≤ v → v ≠ c → v < 2 * c → Reach [⟨a,b,c⟩] [v] (List.replicate v 1) := by
+  intro v hv1 hvc hv2c
+  by_cases hvlt : v < c
+  · exact scatterClean a b c v hv1 hvlt
+  · have hns : Reach [⟨a,b,c⟩] [v] [v / 2, (v + 1) / 2] :=
+      reach_move [] (Local.nsplit v (by omega)
+        (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+    have s1 : Reach [⟨a,b,c⟩] [v / 2, (v + 1) / 2] (List.replicate (v / 2) 1 ++ [(v + 1) / 2]) := by
+      have := reach_frame [(v + 1) / 2] (scatterClean a b c (v / 2) (by omega) (by omega)); simpa using this
+    have scbig := scatBig a b c hc3 hsafe ((v + 1) / 2) (by omega) (v / 2) (by omega)
+    have ecat : v / 2 + (v + 1) / 2 = v := by omega
+    rw [ecat] at scbig
+    exact reach_trans hns (reach_trans s1 scbig)
+
+/-- Scatter any `[v]` from scratch (`2 ≤ a < 2c`, `a ≠ c`, `c ≤ b`): bootstrap units
+    from the small leg `a`, then `scatBig` the rest. -/
+theorem scat0g (a b c : Nat) (ha2 : 2 ≤ a) (hac : a ≠ c) (ha2c : a < 2 * c) (hcb : c ≤ b) (hc3 : 3 ≤ c) :
+    ∀ v, 1 ≤ v → ∃ r, v ≤ r ∧ Reach [⟨a,b,c⟩] [v] (List.replicate r 1) := by
+  intro v
+  induction v using Nat.strongRecOn with
+  | ind v ih =>
+    intro hv
+    by_cases hvc : v < c
+    · exact ⟨v, by omega, scatterClean a b c v hv hvc⟩
+    · by_cases hvc2 : v = c
+      · refine ⟨a + b, by omega, ?_⟩
+        rw [hvc2]
+        have hfs : Reach [⟨a,b,c⟩] [c] [a, b] := by
+          have hm := reach_move [] (Local.fsplit ⟨a,b,c⟩ (List.mem_singleton.2 rfl)) (List.Perm.refl _) (Reach.refl _)
+          simpa using hm
+        have sca : Reach [⟨a,b,c⟩] [a, b] (List.replicate a 1 ++ [b]) := by
+          have := reach_frame [b] (scatSmall a b c hc3 (by omega) a (by omega) hac ha2c); simpa using this
+        have scbig := scatBig a b c hc3 (by omega) b (by omega) a (by omega)
+        exact reach_trans hfs (reach_trans sca scbig)
+      · obtain ⟨r1, hr11, hr1r⟩ := ih (v / 2) (by omega) (by omega)
+        refine ⟨r1 + (v + 1) / 2, by omega, ?_⟩
+        have hns : Reach [⟨a,b,c⟩] [v] [v / 2, (v + 1) / 2] :=
+          reach_move [] (Local.nsplit v (by omega)
+            (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+        have s1 : Reach [⟨a,b,c⟩] [v / 2, (v + 1) / 2] (List.replicate r1 1 ++ [(v + 1) / 2]) := by
+          have := reach_frame [(v + 1) / 2] hr1r; simpa using this
+        have scbig := scatBig a b c hc3 (by omega) ((v + 1) / 2) (by omega) r1 (by omega)
+        exact reach_trans hns (reach_trans s1 scbig)
+
+/-- Gain exactly `g` (`2 ≤ a < 2c`, `a ≠ c`): build a `c`, false-split, scatter both
+    legs (small via `scatSmall`, big via `scatBig`). -/
+theorem ganG_g (a b c : Nat) (ha2 : 2 ≤ a) (hac : a ≠ c) (ha2c : a < 2 * c) (hcb : c ≤ b) (hc3 : 3 ≤ c) :
+    ∀ K, a + b + 1 ≤ K → Reach [⟨a,b,c⟩] (List.replicate K 1) (List.replicate (K + (a + b - c)) 1) := by
+  intro K hK
+  have gC : Reach [⟨a,b,c⟩] (List.replicate c 1) [c] := gatherBig a b c ha2 (by omega) c (by omega)
+  have hsplitrep : List.replicate K (1:Nat) = List.replicate c 1 ++ List.replicate (K - c) 1 := by
+    rw [replicate_one_add]; congr 1; omega
+  have s1 : Reach [⟨a,b,c⟩] (List.replicate K 1) (c :: List.replicate (K - c) 1) := by
+    rw [hsplitrep]; have := reach_frame (List.replicate (K - c) 1) gC; simpa using this
+  have s2 : Reach [⟨a,b,c⟩] (c :: List.replicate (K - c) 1) (a :: b :: List.replicate (K - c) 1) := by
+    have hm := reach_move (List.replicate (K - c) 1) (Local.fsplit ⟨a,b,c⟩ (List.mem_singleton.2 rfl))
+      (List.Perm.refl _) (Reach.refl _)
+    simpa using hm
+  have s3 : Reach [⟨a,b,c⟩] (a :: b :: List.replicate (K - c) 1)
+      (List.replicate a 1 ++ (b :: List.replicate (K - c) 1)) := by
+    have := reach_frame (b :: List.replicate (K - c) 1) (scatSmall a b c hc3 (by omega) a (by omega) hac ha2c)
+    simpa using this
+  have scbig := scatBig a b c hc3 (by omega) b (by omega) a (by omega)
+  have s4 : Reach [⟨a,b,c⟩] (List.replicate a 1 ++ (b :: List.replicate (K - c) 1))
+      (List.replicate (a + b) 1 ++ List.replicate (K - c) 1) := by
+    have := reach_frame (List.replicate (K - c) 1) scbig; simpa using this
+  have ecat : List.replicate (a + b) (1:Nat) ++ List.replicate (K - c) 1 = List.replicate (K + (a + b - c)) 1 := by
+    rw [replicate_one_add]; congr 1; omega
+  rw [ecat] at s4
+  exact reach_trans s1 (reach_trans s2 (reach_trans s3 s4))
+
+/-- **Full sufficiency for `⟨a,b,c⟩`, `2 ≤ a < 2c`, `a ≠ c`, `c ≤ b`, `3 ≤ c`.**
+    Subsumes `single_sufficiency_ac`; covers small legs up to `2c` with any big leg. -/
+theorem single_sufficiency_g (a b c : Nat) (ha2 : 2 ≤ a) (hac : a ≠ c) (ha2c : a < 2 * c) (hcb : c ≤ b) (hc3 : 3 ≤ c) :
+    ∀ s t, Mval [⟨a,b,c⟩] ≤ s → Mval [⟨a,b,c⟩] ≤ t →
+      gz [⟨a,b,c⟩] ∣ ((t : Int) - s) → Reach [⟨a,b,c⟩] [s] [t] :=
+  sufficiency_from_hub a b c (by omega)
+    (gatherBig a b c ha2 (by omega))
+    (loseGposGen a b c ha2 (by omega) hc3 (by omega))
+    (fun K hK => ⟨1, by omega, by
+      rw [show K + 1 * (a + b - c) = K + (a + b - c) from by omega]
+      exact ganG_g a b c ha2 hac ha2c hcb hc3 K hK⟩)
+    (scat0g a b c ha2 hac ha2c hcb hc3)
+
+/-- The lie `5 + 5 = 3` (both legs in `(c,2c)`) is completely solvable above `M = 11`. -/
+theorem solvable_5_5_3 {s t : Nat} (hs : 11 ≤ s) (ht : 11 ≤ t)
+    (h : (7:Int) ∣ ((t:Int) - s)) : Reach [⟨5,5,3⟩] [s] [t] := by
+  refine single_sufficiency_g 5 5 3 (by omega) (by omega) (by omega) (by omega) (by omega) s t ?_ ?_ ?_
+  · have : Mval [⟨5,5,3⟩] = 11 := by decide
+    omega
+  · have : Mval [⟨5,5,3⟩] = 11 := by decide
+    omega
+  · have : gz [⟨5,5,3⟩] = 7 := by decide
+    rw [this]; exact h
+
+#print axioms YaStupid.single_sufficiency_g
+#print axioms YaStupid.solvable_5_5_3
+
+end YaStupid
