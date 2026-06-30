@@ -302,23 +302,32 @@ except the fixed points `c·2^k`**.  `scatStandaloneScat` scatters any `Scat` va
 **at least one leg not of the form `c·2^k`** — the other leg may be anything, even
 `c·2^k` (e.g. `8+9=4`, where `8 = 2c`).  This subsumes all the families above.
 
+### The `a=b` traps, closed without ones (`single_sufficiency_aac`)
+
+The genuine traps — where `[M]` reaches *no* ones-pile — are closed for the `a=b`
+case by a construction that **never scatters to ones**.  `peelc` peels copies of the
+locked `c` (only ever scattering values `< c`); **`gatherCval`** then builds `[a]` by
+*merging copies of `c`* (`{c, jc} → (j+1)c`, all normal since `c ≠ a`).  Climb peels
+one `c`, false-splits `c→{a,a}`, remerges; descend peels `2(a/c)` copies of `c`,
+gathers two `[a]`s, false-merges `{a,a}→c`.  **`single_sufficiency_aac`** closes every
+`⟨a,a,c⟩` with `c ∣ a`, `c < a`, `3 ≤ c` — including all `a=b` `c·2^k` traps (`6+6=3`,
+`10+10=5`, `12+12=3`, …).  `solvable_6_6_3` is a concrete corollary.
+
 ## What is *not* (yet) mechanized
 
-The open set is now exactly two structured, measure-zero families:
-- **`c·2^k` traps** — `a+b>c`, `c ≥ 3`, **both** legs of the form `c·2^k`
-  (`6+6=3`, `c+2c=c`, `12+12=3`, …): the scaled copies of `a=b=c`.  No leg is `Scat`,
-  so neither leg seeds a unit and `[M]` reaches *no* ones-pile — the hub cannot run.
-  `peelk` closed the base case `a=b=c`; the general descend (needing an `{a,a}` from an
-  `nsplit 2a`, where `2a > max(a,b)` can't be built) is genuinely ad-hoc (BFS paths
-  share no uniform shape), the same hardness `peelk` had to absorb by hand.
+The open set has narrowed to two pathological, measure-zero families:
+- **`a ≠ b` `c·2^k` traps** — `⟨c·2^i, c·2^j, c⟩`, `i ≠ j`, `c ≥ 3` (`3+6=3`, `6+12=3`,
+  …).  Here even `peelc` fails: in e.g. `⟨c,2c,c⟩` (`b = a+c`) the false pair `{c,2c}`
+  pervades, and `[4c] → [c,3c]` is genuinely *unreachable* (`3c` needs the false merge),
+  so individual values can't be peeled and only whole-pump ad-hoc paths exist.
 - **`c = 2`** (`3+3=2`, …) — the unit bump fails (`c+1 = 3` re-splits to include `2`),
   so even with units `c` can't be cleared.
 
 This is a construction gap, not a math gap: an exhaustive search
 ([`../test/counterexample-search.js`](../test/counterexample-search.js)) checks both
 pumps for `1+1=c` (`c = 3..9`) and every `a+b>c` with a leg `≥ c` (`2+10=7`, `2+14=7`,
-`2+2=2`, `1+14=7`, `3+3=2`, `5+5=3`, `7+7=3`, `8+9=4`, `15+15=4`, …) and finds **no
-counterexample anywhere** — `M = H+1` holds universally.
+`2+2=2`, `1+14=7`, `3+3=2`, `5+5=3`, `6+6=3`, `7+7=3`, `8+9=4`, `15+15=4`, …) and finds
+**no counterexample anywhere** — `M = H+1` holds universally.
 
 Equivalently phrased — the two one-step pumps for an **arbitrary** configuration:
 
