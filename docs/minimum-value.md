@@ -384,10 +384,14 @@ cluster structure, no `2(a+b)+2 ≤ 3c` restriction — via the all-ones hub
 `≥ c`, **`single_sufficiency_legGE`** gives full sufficiency conditional on the two
 leg-scatter facts `la : Reach [a] (1^a)`, `lb : Reach [b] (1^b)` (the one step where
 the greedy scatter measure can fail); `solvable_2_10_7` discharges them for the
-concrete `2+10=7` (`b=10 > c=7`). The only instances still open are the
-measure-zero set where a leg cannot scatter to ones at all (`a=b=c`, `1+14=7`),
-where `la`/`lb` are false and a different, non-hub construction is needed; these are
-exhaustively BFS-verified to have no counterexample, so `M=H+1` holds there too. For
+concrete `2+10=7` (`b=10 > c=7`). The genuine traps where a leg never reaches ones
+(`la`/`lb` false) are exactly the diagonal `a=b=c`, now **completely closed** by
+**`single_sufficiency_kkk`** (all `k ≥ 1`) via the non-hub `peelk` construction (peel
+a locked `c`, fire one false move for `±g`, remerge). The only instances still open
+are `a+b>c`, leg `≥ c` configs whose legs scatter *inexactly* (to `1^(b+kg)`, not
+`1^b`) — `1+14=7` is the representative (`escape7_1147`/`scatter14_1147` prove its
+legs scatter); these need the inexact-leg hub, and are exhaustively BFS-verified to
+have no counterexample, so `M=H+1` holds there too. For
 any *concrete* single sum the base is finite and dischargeable by BFS (the Classic
 pipeline), so every concrete instance is fully provable. See
 [`../lean/README.md`](../lean/README.md).

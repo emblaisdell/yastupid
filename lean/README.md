@@ -211,20 +211,27 @@ This both **generalizes** `single_sufficiency_dpos_full` (when both legs `< c`,
 discharging `la` directly (`2 < 7`) and `lb` by splitting `10 → [5,5]` first
 (`5 < 7`). Both depend only on `[propext, Classical.choice, Quot.sound]`.
 
-### The looping config `2 + 2 = 2`, closed *without* the hub (`single_sufficiency_222`)
+### The entire trap diagonal `a = b = c = k`, closed *without* the hub (`single_sufficiency_kkk`)
 
 Bridging is strictly weaker than all-ones reachability. `2+2=2` is the clean
 witness: it bridges every `g`-gap above `H+1` (BFS-confirmed) yet **no** single ball
 ever reaches a pure-ones pile — `2 = c` is locked (it can only false-split to
-`{2,2}`), so a `2` is indestructible and `la`/`lb` are *false*. The hub provably
-cannot run, so we use a **different construction** with no ones at all. One recursive
-helper **`peel2 : [v] → [2, v-2]`** (peel a `2` off any `v ≥ 3`) drives both pumps:
-- climb `[n] → [n+2]`: peel a `2`, *false-split* it (`2 → {2,2}`, `+g`), remerge;
-- descend `[n+2] → [n]`: peel two `2`s, *false-merge* them (`{2,2} → 2`, `−g`), remerge.
+`{2,2}`), so a `2` is indestructible and `la`/`lb` are *false*. The same holds for
+every `a=b=c=k` (`k ≥ 2`): `k` is indestructible. The hub provably cannot run, so we
+use a **different construction** with no ones at all. One recursive helper
+**`peelk : [v] → [k, v-k]`** (peel a `k` off any `v ≥ k+1`) drives both pumps
+(`H = 2k`, `M = 2k+1`, `g = k`):
+- climb `[n] → [n+k]`: peel a `k`, *false-split* it (`k → {k,k}`, `+g`), remerge;
+- descend `[n+k] → [n]`: peel two `k`s, *false-merge* them (`{k,k} → k`, `−g`), remerge.
 
-`single_sufficiency_222` (and `solvable_2_2_2`) are `sorry`-free, standard axioms
-only. The same peel-a-locked-`c`-then-false-move template generalizes to the whole
-`a=b=c` diagonal and to locked-`c` loopers like `1+14=7`.
+The one twist over `peel2`: for `k ≥ 3` the sub-range `v ∈ [k+1, 2k-2]` cannot expose
+a `k` by halving (both halves `< k`), so `peelk_lo` scatters `v` to ones (legal there
+— the halving tree stays below `c = k`) and regathers `[k] ++ 1^(v-k)`.
+
+**`single_sufficiency_kkk` closes the whole diagonal `a=b=c=k` for `k ≥ 1`**
+(`sorry`-free, standard axioms only), subsuming `single_sufficiency_222`; `k = 1`
+(`1+1=1`, degenerate) is handled by the same construction. Concrete corollaries
+`solvable_2_2_2`, `solvable_3_3_3`, `solvable_1_1_1`.
 
 ### `1+14=7`: the legs *do* scatter — the greedy measure just loops (`escape7_1147`)
 
@@ -251,15 +258,18 @@ extra wrinkle is `a = 1` (building `[c]` and `[b]` must dodge the `{1,14}` merge
 
 ## What is *not* (yet) mechanized
 
-The genuinely-open set is now just the **true traps** `a=b=c=k` for `k ≥ 3` (and
-`1+14=7` pending the inexact-hub wiring above). For the `a=b=c` traps the hub
-*provably* cannot run, but the non-hub `peel2` route that closed `2+2=2` generalizes
-directly (peel a locked `c`, fire one false move for `±g`, remerge). All are
-**BFS-verified solvable**: an exhaustive search
+The `a=b=c` trap diagonal is now **fully closed** (`single_sufficiency_kkk`, all
+`k ≥ 1`). What remains is the narrow band of `a+b>c` configs with a leg `≥ c` whose
+legs scatter only **inexactly** — they reach an inflated ones-pile `1^(b+k·g)`, not
+`1^b` — so the hub runs but `single_sufficiency_legGE`’s rigid `1^b` hypothesis does
+not fit. `1+14=7` is the representative (`escape7_1147`/`scatter14_1147` prove its
+legs scatter); closing it needs the *inexact-leg* hub (gain `j·g` then shed `(j−1)·g`
+via the leg-free `loseGposGen` to net `+g`) plus the `a=1` gather-dodge (`gatherMin1`).
+This is a mechanical follow-up, not a math gap: an exhaustive search
 ([`../test/counterexample-search.js`](../test/counterexample-search.js)) checks both
 pumps for `1+1=c` (`c = 3..9`) and every `a+b>c` with a leg `≥ c` (`2+10=7`,
 `2+2=2`, `1+14=7`, …) and finds **no counterexample anywhere** — `M = H+1` holds
-universally, so only the Lean construction (not the math) is outstanding for them.
+universally.
 
 Equivalently phrased — the two one-step pumps for an **arbitrary** configuration:
 
@@ -283,15 +293,16 @@ single sum with `a + b < c` (`single_sufficiency_dneg` for `2 ≤ a, b`,
 (`single_sufficiency_dpos_full`, e.g. `3+3=5`, `4+4=5`, `6+6=7`). For `a+b>c` with
 a leg `≥ c`, `single_sufficiency_legGE` gives full sufficiency conditional on the
 two leg-scatter facts `la`, `lb`, and `solvable_2_10_7` discharges them for the
-concrete `2+10=7` (`b > c`). For the genuine traps where the hub *cannot* run (a leg
-reaches no ones-pile at all, `a=b=c`), `single_sufficiency_222` closes `2+2=2` by a
-separate non-hub `peel2` construction that generalizes to the whole diagonal. The
-once-feared `1+14=7` is *not* such a trap: `escape7_1147`/`scatter14_1147` prove its
-legs scatter to (inflated) ones-piles `1^15`, `1^22`, so the inexact-leg hub covers
-it. The only instances still open are these (`a=b=c=k` for `k≥3`, and `1+14=7`
-pending the inexact-hub wiring), all exhaustively BFS-checked to contain NO
-counterexample (`test/counterexample-search.js`), so `M=H+1` is correct there too and
-only the Lean construction is missing.** Exhaustive search over the adversarial
+concrete `2+10=7` (`b > c`). The genuine traps where the hub *cannot* run (a leg
+reaches no ones-pile at all) are exactly the diagonal `a=b=c`, and that is now
+**completely closed** by `single_sufficiency_kkk` (all `k ≥ 1`) via the non-hub
+`peelk` construction. The once-feared `1+14=7` is *not* a trap:
+`escape7_1147`/`scatter14_1147` prove its legs scatter to (inflated) ones-piles
+`1^15`, `1^22`, so the inexact-leg hub will cover it. The only instances still open
+are these inexactly-scattering leg-`≥ c` configs (`1+14=7`, pending the inexact-hub
+wiring), all exhaustively BFS-checked to contain NO counterexample
+(`test/counterexample-search.js`), so `M=H+1` is correct there too and only the Lean
+construction is missing.** Exhaustive search over the adversarial
 `{6+7=2, 6+8=3}` (where no `1` ever exists) likewise finds every in-range pump
 reachable.
 

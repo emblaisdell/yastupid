@@ -3278,3 +3278,187 @@ theorem scatter14_1147 : Reach [⟨1,14,7⟩] [14] (List.replicate 22 1) := by
 #print axioms YaStupid.scatter14_1147
 
 end YaStupid
+
+
+namespace YaStupid
+
+/-! ### Closing the whole `a = b = c = k` diagonal (`single_sufficiency_kkk`)
+
+Every `a=b=c=k` with `k ≥ 2` is a *genuine trap* — `k = c` is locked, only
+false-splits to `{k,k}`, so a `k` is indestructible and no ball ever reaches ones —
+exactly the obstruction that defeats the all-ones hub.  (`k = 1` is the degenerate
+edge `1+1=1`, handled by the same construction.)  We close the entire diagonal
+(`k ≥ 1`) with the `2+2=2` construction generalized: one recursive helper
+**`peelk : [v] → [k, v-k]`** (peel a `k` off any `v ≥ k+1`) drives both pumps
+(`H = 2k`, `M = 2k+1`, `g = k`):
+
+- climb `[n] → [n+k]`: peel a `k`, *false-split* it (`k → {k,k}`, `+g`), remerge;
+- descend `[n+k] → [n]`: peel two `k`s, *false-merge* them (`{k,k} → k`, `−g`), remerge.
+
+The only twist over `peel2`: when `k ≥ 3` the sub-range `v ∈ [k+1, 2k-2]` cannot
+expose a `k` by halving (both halves `< k`), so `peelk_lo` scatters `v` to ones (legal
+there — the halving tree stays below `c = k`) and regathers `[k] ++ 1^(v-k)`. -/
+
+/-- The low sub-range `k+1 ≤ v ≤ 2k-2` (only nonempty for `k ≥ 3`): halve, scatter the
+    two sub-`k` halves to ones, regather a `[k]` and a `[v-k]`. -/
+theorem peelk_lo (k : Nat) (hk : 3 ≤ k) :
+    ∀ v, k + 1 ≤ v → v ≤ 2 * k - 2 → Reach [⟨k,k,k⟩] [v] [k, v - k] := by
+  intro v h1 h2
+  have hsp : Reach [⟨k,k,k⟩] [v] [v / 2, (v + 1) / 2] :=
+    reach_move [] (Local.nsplit v (by omega)
+      (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+  have hscat : Reach [⟨k,k,k⟩] [v / 2, (v + 1) / 2] (List.replicate v 1) := by
+    have h := scatterList k k k [v / 2, (v + 1) / 2] (by
+      intro x hx
+      rcases List.mem_cons.1 hx with rfl | hx
+      · exact ⟨by omega, by omega⟩
+      · rw [List.mem_singleton] at hx; subst hx; exact ⟨by omega, by omega⟩)
+    rwa [show total [v / 2, (v + 1) / 2] = v from by
+      simp only [total_cons, total_nil]; omega] at h
+  have hg1 : Reach [⟨k,k,k⟩] (List.replicate v 1) (k :: List.replicate (v - k) 1) :=
+    gatherPrefix k k k k v (by omega) (by omega) (by omega)
+  have hg2 : Reach [⟨k,k,k⟩] (List.replicate (v - k) 1) [v - k] := by
+    have := gatherPrefix k k k (v - k) (v - k) (by omega) (by omega) (by omega)
+    simpa using this
+  have hg3 : Reach [⟨k,k,k⟩] (k :: List.replicate (v - k) 1) [k, v - k] := by
+    have := reach_frame_left [k] hg2; simpa using this
+  exact reach_trans hsp (reach_trans hscat (reach_trans hg1 hg3))
+
+/-- Peel a single `k` off any `v ≥ k+1`: `[v] → [k, v-k]`.  Strong recursion:
+    `v ∈ [k+1, 2k-2]` via `peelk_lo`; `v ∈ {2k-1, 2k, 2k+1}` split directly to
+    `{k, v-k}`; `v ≥ 2k+2` splits, peels the smaller half (`≥ k+1`), remerges. -/
+theorem peelk (k : Nat) (hk : 1 ≤ k) : ∀ v, k + 1 ≤ v → Reach [⟨k,k,k⟩] [v] [k, v - k] := by
+  intro v
+  induction v using Nat.strongRecOn with
+  | ind v ih =>
+    intro hv
+    by_cases hlo : v ≤ 2 * k - 2
+    · exact peelk_lo k (by omega) v hv hlo
+    · by_cases h1 : v = 2 * k - 1
+      · refine reach_move' [] (Local.nsplit v (by omega)
+          (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) ?_ (Reach.refl _)
+        have e1 : v / 2 = k - 1 := by omega
+        have e2 : (v + 1) / 2 = k := by omega
+        rw [e1, e2, show v - k = k - 1 from by omega]
+        exact List.Perm.swap (k - 1) k []
+      · by_cases h2 : v = 2 * k
+        · have hsp : Reach [⟨k,k,k⟩] [v] [v / 2, (v + 1) / 2] :=
+            reach_move [] (Local.nsplit v (by omega)
+              (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+          rw [show v / 2 = k from by omega, show (v + 1) / 2 = k from by omega] at hsp
+          rw [show v - k = k from by omega]; exact hsp
+        · by_cases h3 : v = 2 * k + 1
+          · have hsp : Reach [⟨k,k,k⟩] [v] [v / 2, (v + 1) / 2] :=
+              reach_move [] (Local.nsplit v (by omega)
+                (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+            rw [show v / 2 = k from by omega, show (v + 1) / 2 = k + 1 from by omega] at hsp
+            rw [show v - k = k + 1 from by omega]; exact hsp
+          · -- v ≥ 2k+2
+            have hsp : Reach [⟨k,k,k⟩] [v] [v / 2, (v + 1) / 2] :=
+              reach_move [] (Local.nsplit v (by omega)
+                (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+            have hpe := ih (v / 2) (by omega) (by omega)
+            have hfr : Reach [⟨k,k,k⟩] [v / 2, (v + 1) / 2] [k, v / 2 - k, (v + 1) / 2] := by
+              have := reach_frame [(v + 1) / 2] hpe; simpa using this
+            have hcc : ∀ f ∈ ([⟨k,k,k⟩] : Config),
+                ¬ ((f.a = v / 2 - k ∧ f.b = (v + 1) / 2) ∨ (f.a = (v + 1) / 2 ∧ f.b = v / 2 - k)) := by
+              simp only [List.mem_singleton, forall_eq]; omega
+            have hm0 : Reach [⟨k,k,k⟩] [v / 2 - k, (v + 1) / 2] [v / 2 - k + (v + 1) / 2] :=
+              reach_move [] (Local.nmerge (v / 2 - k) ((v + 1) / 2) hcc) (List.Perm.refl _) (Reach.refl _)
+            have hmg : Reach [⟨k,k,k⟩] [k, v / 2 - k, (v + 1) / 2] [k, v - k] := by
+              have := reach_frame_left [k] hm0
+              rw [show v / 2 - k + (v + 1) / 2 = v - k from by omega] at this
+              simpa using this
+            exact reach_trans hsp (reach_trans hfr hmg)
+
+/-- **Climb pump for `a=b=c=k`**: `[n] → [n+k]` for every `n ≥ 2k+1`. -/
+theorem climb_kkk (k : Nat) (hk : 1 ≤ k) : ∀ n, 2 * k + 1 ≤ n → Reach [⟨k,k,k⟩] [n] [n + k] := by
+  intro n hn
+  have hp := peelk k hk n (by omega)
+  have hfs : Reach [⟨k,k,k⟩] [k, n - k] [k, k, n - k] := by
+    have hm := reach_move [n - k] (Local.fsplit ⟨k,k,k⟩ (List.mem_singleton.2 rfl))
+      (List.Perm.refl _) (Reach.refl _)
+    simpa using hm
+  have hm1 : Reach [⟨k,k,k⟩] [k, k, n - k] [k, n] := by
+    have hcc : ∀ f ∈ ([⟨k,k,k⟩] : Config), ¬ ((f.a = k ∧ f.b = n - k) ∨ (f.a = n - k ∧ f.b = k)) := by
+      simp only [List.mem_singleton, forall_eq]; omega
+    have hm0 : Reach [⟨k,k,k⟩] [k, n - k] [k + (n - k)] :=
+      reach_move [] (Local.nmerge k (n - k) hcc) (List.Perm.refl _) (Reach.refl _)
+    have := reach_frame_left [k] hm0
+    rw [show k + (n - k) = n from by omega] at this
+    simpa using this
+  have hm2 : Reach [⟨k,k,k⟩] [k, n] [n + k] := by
+    have hcc : ∀ f ∈ ([⟨k,k,k⟩] : Config), ¬ ((f.a = k ∧ f.b = n) ∨ (f.a = n ∧ f.b = k)) := by
+      simp only [List.mem_singleton, forall_eq]; omega
+    have hm0 := reach_move [] (Local.nmerge k n hcc) (List.Perm.refl _) (Reach.refl _)
+    rw [show k + n = n + k from by omega] at hm0
+    exact hm0
+  exact reach_trans hp (reach_trans hfs (reach_trans hm1 hm2))
+
+/-- **Descend pump for `a=b=c=k`**: `[n+k] → [n]` for every `n ≥ 2k+1`. -/
+theorem descend_kkk (k : Nat) (hk : 1 ≤ k) : ∀ n, 2 * k + 1 ≤ n → Reach [⟨k,k,k⟩] [n + k] [n] := by
+  intro n hn
+  have hp1 : Reach [⟨k,k,k⟩] [n + k] [k, n] := by
+    have := peelk k hk (n + k) (by omega)
+    rw [show n + k - k = n from by omega] at this
+    exact this
+  have hp2 : Reach [⟨k,k,k⟩] [k, n] [k, k, n - k] := by
+    have := reach_frame_left [k] (peelk k hk n (by omega)); simpa using this
+  have hfm : Reach [⟨k,k,k⟩] [k, k, n - k] [k, n - k] := by
+    have hm := reach_move [n - k] (Local.fmerge ⟨k,k,k⟩ (List.mem_singleton.2 rfl))
+      (List.Perm.refl _) (Reach.refl _)
+    simpa using hm
+  have hm1 : Reach [⟨k,k,k⟩] [k, n - k] [n] := by
+    have hcc : ∀ f ∈ ([⟨k,k,k⟩] : Config), ¬ ((f.a = k ∧ f.b = n - k) ∨ (f.a = n - k ∧ f.b = k)) := by
+      simp only [List.mem_singleton, forall_eq]; omega
+    have hm0 := reach_move [] (Local.nmerge k (n - k) hcc) (List.Perm.refl _) (Reach.refl _)
+    rw [show k + (n - k) = n from by omega] at hm0
+    exact hm0
+  exact reach_trans hp1 (reach_trans hp2 (reach_trans hfm hm1))
+
+/-- **Full sufficiency for the entire diagonal `a = b = c = k` (`k ≥ 1`)**, via the
+    two pumps — *without* the all-ones hub (which for `k ≥ 2` provably cannot run,
+    since `k` is locked and never reaches ones).  Every `s, t ≥ M = 2k+1` with
+    `k ∣ (t−s)` are interreachable.  Subsumes `single_sufficiency_222` (`k = 2`). -/
+theorem single_sufficiency_kkk (k : Nat) (hk : 1 ≤ k) :
+    ∀ s t, Mval [⟨k,k,k⟩] ≤ s → Mval [⟨k,k,k⟩] ≤ t →
+      gz [⟨k,k,k⟩] ∣ ((t : Int) - s) → Reach [⟨k,k,k⟩] [s] [t] := by
+  have hg : gnat [⟨k,k,k⟩] = k := by rw [gnat_dpos k k k (by omega)]; omega
+  have hM : Mval [⟨k,k,k⟩] = 2 * k + 1 := by
+    have hH : Hnat [⟨k,k,k⟩] = 2 * k := by rw [Hnat_dpos k k k (by omega)]; omega
+    show Hnat [⟨k,k,k⟩] + 1 = 2 * k + 1; rw [hH]
+  have climb : ∀ n, Mval [⟨k,k,k⟩] ≤ n → Reach [⟨k,k,k⟩] [n] [n + gnat [⟨k,k,k⟩]] := by
+    intro n hn; rw [hg]; exact climb_kkk k hk n (by omega)
+  have descend : ∀ n, Mval [⟨k,k,k⟩] ≤ n → Reach [⟨k,k,k⟩] [n + gnat [⟨k,k,k⟩]] [n] := by
+    intro n hn; rw [hg]; exact descend_kkk k hk n (by omega)
+  intro s t hs ht hg'
+  exact sufficiency_of_pumps climb descend hs ht hg'
+
+/-- The lie `3 + 3 = 3` is completely solvable above `M = 7`. -/
+theorem solvable_3_3_3 {s t : Nat} (hs : 7 ≤ s) (ht : 7 ≤ t)
+    (h : (3:Int) ∣ ((t:Int) - s)) : Reach [⟨3,3,3⟩] [s] [t] := by
+  refine single_sufficiency_kkk 3 (by omega) s t ?_ ?_ ?_
+  · have h7 : Mval [⟨3,3,3⟩] = 7 := by decide
+    omega
+  · have h7 : Mval [⟨3,3,3⟩] = 7 := by decide
+    omega
+  · have : gz [⟨3,3,3⟩] = 3 := by decide
+    rw [this]; exact h
+
+/-- The degenerate edge `1 + 1 = 1` is completely solvable above `M = 3`. -/
+theorem solvable_1_1_1 {s t : Nat} (hs : 3 ≤ s) (ht : 3 ≤ t)
+    (h : (1:Int) ∣ ((t:Int) - s)) : Reach [⟨1,1,1⟩] [s] [t] := by
+  refine single_sufficiency_kkk 1 (by omega) s t ?_ ?_ ?_
+  · have h3 : Mval [⟨1,1,1⟩] = 3 := by decide
+    omega
+  · have h3 : Mval [⟨1,1,1⟩] = 3 := by decide
+    omega
+  · have : gz [⟨1,1,1⟩] = 1 := by decide
+    rw [this]; exact h
+
+#print axioms YaStupid.peelk
+#print axioms YaStupid.single_sufficiency_kkk
+#print axioms YaStupid.solvable_3_3_3
+#print axioms YaStupid.solvable_1_1_1
+
+end YaStupid
