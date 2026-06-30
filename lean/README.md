@@ -291,27 +291,30 @@ the first unit) closes:
 - **`⟨a,b,c⟩`, `2 ≤ a < 2c`, `a ≠ c`, `c ≤ b`** — `single_sufficiency_g` (e.g. `5+5=3`,
   `2+14=7`), the small leg `< 2c` bootstrapping; the big leg is any size.
 
-Together these cover **every leg-`≥c` config with a leg below `2c`** (`c ≥ 3`).
+A further band — **both legs in `[2c+1, 4c-2]`** — is closed by
+`single_sufficiency_band` (e.g. `7+7=3`): such a leg halves into a `(c,2c)` piece
+(self-scattering via `scatSmall`) and a `[c,2c-1]` piece (`scatBigR`, the value-first
+reservoir scatter).  So **every leg-`≥c` config with both legs `< 4c-2`** (`c ≥ 3`) is
+done.
 
 ## What is *not* (yet) mechanized
 
-The remaining open set has shrunk to `a+b>c`, `c ≥ 3` configs where **both legs are
-`≥ 2c`** (so the small-leg bootstrap above doesn't fire), plus `c = 2` configs, plus
-the `a = c` edge. These split into:
-- **scatterers** (e.g. `7+7=3`: `7→[3,4]`, `4 ∈ (c,2c)` bootstraps) — they plug into
-  `single_sufficiency_legGE_inexact` once their legs are scattered, which needs a
-  bootstrap recursion exploring the `⌈·/2⌉` branch;
+The open set is now `a+b>c`, `c ≥ 3` with a leg `≥ 4c-1`, plus `c = 2`. Structurally:
+- **higher-band scatterers** (legs `≥ 4c-1` not of the form `c·2^k`) — the same
+  `scatSmall`/`scatBigR` recipe recurses one more halving per band; closing all bands
+  at once needs a single recursion that provably avoids the `c·2^k` values (the only
+  halving fixed points), which is mechanical but unbounded as written band-by-band;
 - **`c·2^k` traps** (e.g. `6+6=3`, `12+12=3`) — like `a=b=c` scaled: `[M]` reaches *no*
-  ones-pile, so `peelk` (not the hub) is the route, but `peelk` as written is
-  `a=b=c`-specific and the off-diagonal descend is genuinely ad-hoc;
+  ones-pile, so the hub cannot run; `peelk`'s idea applies but the off-diagonal
+  descend is genuinely ad-hoc (BFS paths share no uniform shape);
 - **`c = 2`** (e.g. `3+3=2`) — the bump fails (`c+1 = 3` re-splits to include `2`), so
   even with units `c` can't be cleared.
 
 This is a construction gap, not a math gap: an exhaustive search
 ([`../test/counterexample-search.js`](../test/counterexample-search.js)) checks both
 pumps for `1+1=c` (`c = 3..9`) and every `a+b>c` with a leg `≥ c` (`2+10=7`, `2+14=7`,
-`2+2=2`, `1+14=7`, `3+3=2`, `7+7=3`, …) and finds **no counterexample anywhere** —
-`M = H+1` holds universally.
+`2+2=2`, `1+14=7`, `3+3=2`, `5+5=3`, `7+7=3`, …) and finds **no counterexample
+anywhere** — `M = H+1` holds universally.
 
 Equivalently phrased — the two one-step pumps for an **arbitrary** configuration:
 
