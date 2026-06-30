@@ -4624,3 +4624,80 @@ theorem solvable_7_7_3 {s t : Nat} (hs : 15 ≤ s) (ht : 15 ≤ t)
 #print axioms YaStupid.solvable_7_7_3
 
 end YaStupid
+
+
+namespace YaStupid
+
+/-! ### All higher bands at once: the `Scat` predicate
+
+`Scat c v` says "`v` reaches a `(c,2c)` value by repeated halving (taking either
+floor or ceil at each step)".  It holds for **every** `v` except the halving fixed
+points `c·2^k`.  By induction on a `Scat` derivation, any such `v` scatters to `1^v`
+(`scatStandaloneScat`): a `(c,2c)` value self-scatters (`scatSmall`); a larger value
+recurses on the good half and `scatBig`s the other.  Discharging `Scat c a`, `Scat c b`
+then closes **every** `2 ≤ a,b`, `c ≥ 3` config whose legs are not `c·2^k` — all
+higher bands, in one theorem. -/
+
+/-- `v` halves down (floor or ceil) into the bootstrap window `(c, 2c)`. -/
+inductive Scat (c : Nat) : Nat → Prop
+  | mid {v : Nat} : c < v → v < 2 * c → Scat c v
+  | bigF {v : Nat} : 2 * c ≤ v → Scat c (v / 2) → Scat c v
+  | bigC {v : Nat} : 2 * c ≤ v → Scat c ((v + 1) / 2) → Scat c v
+
+/-- Any `Scat c v` value scatters to `1^v` exactly. -/
+theorem scatStandaloneScat (a b c : Nat) (hc3 : 3 ≤ c)
+    (hsafe : ¬ ((a = 1 ∧ b = c) ∨ (a = c ∧ b = 1))) :
+    ∀ {v : Nat}, Scat c v → Reach [⟨a,b,c⟩] [v] (List.replicate v 1) := by
+  intro v hscat
+  induction hscat with
+  | mid h1 h2 => exact scatSmall a b c hc3 hsafe _ (by omega) (by omega) (by omega)
+  | @bigF v hv _ ih =>
+    have hns : Reach [⟨a,b,c⟩] [v] [v / 2, (v + 1) / 2] :=
+      reach_move [] (Local.nsplit v (by omega)
+        (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+    have s1 : Reach [⟨a,b,c⟩] [v / 2, (v + 1) / 2] (List.replicate (v / 2) 1 ++ [(v + 1) / 2]) := by
+      have := reach_frame [(v + 1) / 2] ih; simpa using this
+    have sb := scatBig a b c hc3 hsafe ((v + 1) / 2) (by omega) (v / 2) (by omega)
+    rw [show v / 2 + (v + 1) / 2 = v from by omega] at sb
+    exact reach_trans hns (reach_trans s1 sb)
+  | @bigC v hv _ ih =>
+    have hns : Reach [⟨a,b,c⟩] [v] [v / 2, (v + 1) / 2] :=
+      reach_move [] (Local.nsplit v (by omega)
+        (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+    have s1 : Reach [⟨a,b,c⟩] [v / 2, (v + 1) / 2] (v / 2 :: List.replicate ((v + 1) / 2) 1) := by
+      have := reach_frame_left [v / 2] ih; simpa using this
+    have e : v / 2 :: List.replicate ((v + 1) / 2) 1 = [v / 2] ++ List.replicate ((v + 1) / 2) 1 := by simp
+    rw [e] at s1
+    have sb := scatBigR a b c hc3 hsafe (v / 2) (by omega) ((v + 1) / 2) (by omega)
+    rw [show v / 2 + (v + 1) / 2 = v from by omega] at sb
+    exact reach_trans hns (reach_trans s1 sb)
+
+/-- **Full sufficiency for `2 ≤ a, b`, `c ≥ 3`, `c < a+b` whenever both legs are
+    `Scat` (i.e. not `c·2^k`).**  Closes all higher bands uniformly. -/
+theorem single_sufficiency_scat (a b c : Nat) (ha2 : 2 ≤ a) (hb2 : 2 ≤ b)
+    (hc3 : 3 ≤ c) (hab : c < a + b) (hsa : Scat c a) (hsb : Scat c b) :
+    ∀ s t, Mval [⟨a,b,c⟩] ≤ s → Mval [⟨a,b,c⟩] ≤ t →
+      gz [⟨a,b,c⟩] ∣ ((t : Int) - s) → Reach [⟨a,b,c⟩] [s] [t] := by
+  have hsafe : ¬ ((a = 1 ∧ b = c) ∨ (a = c ∧ b = 1)) := by omega
+  exact single_sufficiency_legGE_inexact a b c ha2 hb2 hc3 hab
+    ⟨a, Nat.le_refl a, scatStandaloneScat a b c hc3 hsafe hsa⟩
+    ⟨b, Nat.le_refl b, scatStandaloneScat a b c hc3 hsafe hsb⟩
+
+/-- The leg-`≥4c-1` lie `15 + 15 = 4` (`15 = 4c-1`, beyond every earlier band, not
+    `c·2^k`) is completely solvable above `M = 31`. -/
+theorem solvable_15_15_4 {s t : Nat} (hs : 31 ≤ s) (ht : 31 ≤ t)
+    (h : (26:Int) ∣ ((t:Int) - s)) : Reach [⟨15,15,4⟩] [s] [t] := by
+  have hsc : Scat 4 15 := Scat.bigF (by omega) (Scat.mid (by omega) (by omega))
+  refine single_sufficiency_scat 15 15 4 (by omega) (by omega) (by omega) (by omega) hsc hsc s t ?_ ?_ ?_
+  · have : Mval [⟨15,15,4⟩] = 31 := by decide
+    omega
+  · have : Mval [⟨15,15,4⟩] = 31 := by decide
+    omega
+  · have : gz [⟨15,15,4⟩] = 26 := by decide
+    rw [this]; exact h
+
+#print axioms YaStupid.scatStandaloneScat
+#print axioms YaStupid.single_sufficiency_scat
+#print axioms YaStupid.solvable_15_15_4
+
+end YaStupid
