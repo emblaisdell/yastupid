@@ -5813,3 +5813,107 @@ theorem solvable_3_3_2 {s t : Nat} (hs : 7 ≤ s) (ht : 7 ≤ t)
 #print axioms YaStupid.solvable_3_3_2
 
 end YaStupid
+
+
+namespace YaStupid
+
+/-! ### `c = 2` with both legs odd, `a ≠ b`: `single_sufficiency_c2_both_odd`
+
+Both legs odd ⇒ `b − a` even, say `b = a + 2d`.  Descend needs no `1`s: build `[2a]`
+from `a` copies of `2`, **split** `[2a] → [a,a]`, keep one `[a]`, and bridge the other
+to `[b]` by merging in `d` more `2`s (`{x,2}` is never `{a,b}` since legs `≥ 3`).
+Then false-merge `{a,b} → 2`. -/
+
+/-- Merge `d` copies of `2` onto a ball `[x]` (legal in `⟨a,b,2⟩`, legs `≥ 3`). -/
+theorem mergeTwos (a b : Nat) (ha3 : 3 ≤ a) (hb3 : 3 ≤ b) :
+    ∀ d x, Reach [⟨a,b,2⟩] (x :: List.replicate d 2) [x + 2 * d] := by
+  intro d
+  induction d with
+  | zero => intro x; simpa using Reach.refl [x]
+  | succ d ih =>
+    intro x
+    have hcc : ∀ f ∈ ([⟨a,b,2⟩] : Config), ¬ ((f.a = x ∧ f.b = 2) ∨ (f.a = 2 ∧ f.b = x)) := by
+      simp only [List.mem_singleton, forall_eq]; omega
+    have hm : Reach [⟨a,b,2⟩] (x :: List.replicate (d+1) 2) ((x + 2) :: List.replicate d 2) := by
+      have h : Reach [⟨a,b,2⟩] ([x, 2] ++ List.replicate d 2) ([x + 2] ++ List.replicate d 2) :=
+        reach_frame (List.replicate d 2) (reach_move [] (Local.nmerge x 2 hcc) (List.Perm.refl _) (Reach.refl _))
+      have e1 : x :: List.replicate (d+1) 2 = [x, 2] ++ List.replicate d 2 := by
+        rw [List.replicate_succ]; rfl
+      rw [e1]; simpa using h
+    have hrec := ih (x + 2)
+    rw [show x + 2 * (d + 1) = (x + 2) + 2 * d from by omega]
+    exact reach_trans hm hrec
+
+/-- Descend for both-odd `⟨a,b,2⟩` with `b = a + 2d` (`a ≥ 3`, `d ≥ 1`):
+    `[n+(a+b-2)] → [n]`. -/
+theorem descendBothOdd2 (a b d : Nat) (ha3 : 3 ≤ a) (hb3 : 3 ≤ b) (hd1 : 1 ≤ d)
+    (hb : b = a + 2*d) (hpeel : ∀ v, 3 ≤ v → Reach [⟨a,b,2⟩] [v] [2, v - 2]) :
+    ∀ n, a + b + 1 ≤ n → Reach [⟨a,b,2⟩] [n + (a + b - 2)] [n] := by
+  intro n hn
+  have hpe := peelcManyG a b 2 hpeel (a + d) (n + (a + b - 2)) (by omega)
+  rw [show n + (a + b - 2) - (a + d) * 2 = n - 2 from by omega] at hpe
+  have esplit : List.replicate (a + d) 2 ++ [n - 2]
+      = List.replicate a 2 ++ (List.replicate d 2 ++ [n - 2]) := by
+    rw [← repl_add, List.append_assoc]
+  rw [esplit] at hpe
+  have hgs : ∀ k, 1 ≤ k → k < a → ¬ ((a = 2 ∧ b = k*2) ∨ (a = k*2 ∧ b = 2)) := by
+    intro k _ _; omega
+  have hga : Reach [⟨a,b,2⟩] (List.replicate a 2) [a * 2] := gatherCvalG a b 2 a (by omega) hgs
+  have hsplit : Reach [⟨a,b,2⟩] [a * 2] [a, a] := by
+    have h : Reach [⟨a,b,2⟩] [a * 2] [(a*2)/2, (a*2+1)/2] :=
+      reach_move [] (Local.nsplit (a*2) (by omega) (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+    rwa [show (a*2)/2 = a from by omega, show (a*2+1)/2 = a from by omega] at h
+  have gaa : Reach [⟨a,b,2⟩] (List.replicate a 2) [a, a] := reach_trans hga hsplit
+  have g1 : Reach [⟨a,b,2⟩] (List.replicate a 2 ++ (List.replicate d 2 ++ [n - 2]))
+      ([a, a] ++ (List.replicate d 2 ++ [n - 2])) := reach_frame _ gaa
+  have hbridge : Reach [⟨a,b,2⟩] (a :: List.replicate d 2) [b] := by
+    have := mergeTwos a b ha3 hb3 d a; rwa [show a + 2 * d = b from by omega] at this
+  have g2 : Reach [⟨a,b,2⟩] ([a, a] ++ (List.replicate d 2 ++ [n - 2])) [a, b, n - 2] := by
+    have hb2 : Reach [⟨a,b,2⟩] (a :: List.replicate d 2 ++ [n - 2]) (b :: [n - 2]) := by
+      have := reach_frame [n - 2] hbridge; simpa using this
+    have := reach_frame_left [a] hb2
+    simpa using this
+  have hfm : Reach [⟨a,b,2⟩] [a, b, n - 2] [2, n - 2] := by
+    have hm := reach_move [n - 2] (Local.fmerge ⟨a,b,2⟩ (List.mem_singleton.2 rfl)) (List.Perm.refl _) (Reach.refl _)
+    simpa using hm
+  have hmg : Reach [⟨a,b,2⟩] [2, n - 2] [n] := by
+    have hcc : ∀ f ∈ ([⟨a,b,2⟩] : Config), ¬ ((f.a = 2 ∧ f.b = n - 2) ∨ (f.a = n - 2 ∧ f.b = 2)) := by
+      simp only [List.mem_singleton, forall_eq]; omega
+    have hmm := reach_move [] (Local.nmerge 2 (n - 2) hcc) (List.Perm.refl _) (Reach.refl _)
+    rw [show 2 + (n - 2) = n from by omega] at hmm
+    exact hmm
+  exact reach_trans hpe (reach_trans g1 (reach_trans g2 (reach_trans hfm hmg)))
+
+/-- **Both-odd `⟨a,b,2⟩` (`b = a+2d`) is solvable** (`a ≥ 3`, `d ≥ 1`; e.g. `3+5=2`,
+    `3+7=2`, `5+7=2`). -/
+theorem single_sufficiency_c2_both_odd (a b d : Nat) (ha3 : 3 ≤ a) (hb3 : 3 ≤ b) (hd1 : 1 ≤ d)
+    (hb : b = a + 2*d) :
+    ∀ s t, Mval [⟨a,b,2⟩] ≤ s → Mval [⟨a,b,2⟩] ≤ t →
+      gz [⟨a,b,2⟩] ∣ ((t : Int) - s) → Reach [⟨a,b,2⟩] [s] [t] := by
+  have hpeel := peelc2 a b ha3 hb3
+  have hg : gnat [⟨a,b,2⟩] = a + b - 2 := gnat_dpos a b 2 (by omega)
+  have hM : Mval [⟨a,b,2⟩] = a + b + 1 := by
+    show Hnat [⟨a,b,2⟩] + 1 = a + b + 1; rw [Hnat_dpos a b 2 (by omega)]
+  have climb : ∀ n, Mval [⟨a,b,2⟩] ≤ n → Reach [⟨a,b,2⟩] [n] [n + gnat [⟨a,b,2⟩]] := by
+    intro n hn; rw [hg, hM] at *; exact climbTrap a b 2 (by omega) (by omega) (by omega) (by omega) hpeel n (by omega)
+  have descend : ∀ n, Mval [⟨a,b,2⟩] ≤ n → Reach [⟨a,b,2⟩] [n + gnat [⟨a,b,2⟩]] [n] := by
+    intro n hn; rw [hg, hM] at *; exact descendBothOdd2 a b d ha3 hb3 hd1 hb hpeel n (by omega)
+  intro s t hs ht hg'
+  exact sufficiency_of_pumps climb descend hs ht hg'
+
+/-- The trap `3 + 5 = 2` (both odd, `a ≠ b`) is solvable above `M = 9`. -/
+theorem solvable_3_5_2 {s t : Nat} (hs : 9 ≤ s) (ht : 9 ≤ t)
+    (h : (6:Int) ∣ ((t:Int) - s)) : Reach [⟨3,5,2⟩] [s] [t] := by
+  refine single_sufficiency_c2_both_odd 3 5 1 (by omega) (by omega) (by omega) (by omega) s t ?_ ?_ ?_
+  · have : Mval [⟨3,5,2⟩] = 9 := by decide
+    omega
+  · have : Mval [⟨3,5,2⟩] = 9 := by decide
+    omega
+  · have : gz [⟨3,5,2⟩] = 6 := by decide
+    rw [this]; exact h
+
+#print axioms YaStupid.descendBothOdd2
+#print axioms YaStupid.single_sufficiency_c2_both_odd
+#print axioms YaStupid.solvable_3_5_2
+
+end YaStupid
