@@ -4787,3 +4787,215 @@ theorem solvable_8_9_4 {s t : Nat} (hs : 18 ≤ s) (ht : 18 ≤ t)
 #print axioms YaStupid.solvable_8_9_4
 
 end YaStupid
+
+
+namespace YaStupid
+
+/-! ### Closing the `a=b` traps `⟨a,a,c⟩` with `c ∣ a` (e.g. `6+6=3`, `10+10=5`)
+
+These are the genuine traps the hub can't touch.  The escape is to **never scatter to
+ones**: peel copies of the locked `c` (`peelc`, which only ever scatters values `< c`),
+then build `[a]` by *merging copies of `c`* (`gatherCval`: `{c, jc} → (j+1)c`, all
+normal since `c ≠ a`).  Climb peels one `c`, false-splits `c→{a,a}`, remerges; descend
+peels `2(a/c)` copies of `c`, gathers two `[a]`s, false-merges `{a,a}→c`. -/
+
+/-- General replicate-append (any base). -/
+theorem repl_add (p q x : Nat) : List.replicate p x ++ List.replicate q x = List.replicate (p + q) x := by
+  induction p with
+  | zero => simp
+  | succ p ih => simp [List.replicate_succ, ih, Nat.succ_add]
+
+/-- Peel a `c` off any `v ≥ c+1` in `⟨a,a,c⟩` (`c < a`): low range scatters `<c` halves
+    and regathers; `{2c-1,2c,2c+1}` split directly; larger recurses. -/
+theorem peelc_lo (a c : Nat) (hca : c < a) (hc3 : 3 ≤ c) :
+    ∀ v, c + 1 ≤ v → v ≤ 2 * c - 2 → Reach [⟨a,a,c⟩] [v] [c, v - c] := by
+  intro v h1 h2
+  have hsp : Reach [⟨a,a,c⟩] [v] [v / 2, (v + 1) / 2] :=
+    reach_move [] (Local.nsplit v (by omega)
+      (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+  have hscat : Reach [⟨a,a,c⟩] [v / 2, (v + 1) / 2] (List.replicate v 1) := by
+    have h := scatterList a a c [v / 2, (v + 1) / 2] (by
+      intro x hx
+      rcases List.mem_cons.1 hx with rfl | hx
+      · exact ⟨by omega, by omega⟩
+      · rw [List.mem_singleton] at hx; subst hx; exact ⟨by omega, by omega⟩)
+    rwa [show total [v / 2, (v + 1) / 2] = v from by simp only [total_cons, total_nil]; omega] at h
+  have hg1 : Reach [⟨a,a,c⟩] (List.replicate v 1) (c :: List.replicate (v - c) 1) :=
+    gatherPrefix a a c c v (by omega) (by omega) (by omega)
+  have hg2 : Reach [⟨a,a,c⟩] (List.replicate (v - c) 1) [v - c] := by
+    have := gatherPrefix a a c (v - c) (v - c) (by omega) (by omega) (by omega); simpa using this
+  have hg3 : Reach [⟨a,a,c⟩] (c :: List.replicate (v - c) 1) [c, v - c] := by
+    have := reach_frame_left [c] hg2; simpa using this
+  exact reach_trans hsp (reach_trans hscat (reach_trans hg1 hg3))
+
+/-- Peel a `c` off any `v ≥ c+1`. -/
+theorem peelc (a c : Nat) (hca : c < a) (hc3 : 3 ≤ c) :
+    ∀ v, c + 1 ≤ v → Reach [⟨a,a,c⟩] [v] [c, v - c] := by
+  intro v
+  induction v using Nat.strongRecOn with
+  | ind v ih =>
+    intro hv
+    by_cases hlo : v ≤ 2 * c - 2
+    · exact peelc_lo a c hca hc3 v hv hlo
+    · by_cases h1 : v = 2 * c - 1
+      · refine reach_move' [] (Local.nsplit v (by omega)
+          (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) ?_ (Reach.refl _)
+        rw [show v / 2 = c - 1 from by omega, show (v + 1) / 2 = c from by omega, show v - c = c - 1 from by omega]
+        exact List.Perm.swap (c - 1) c []
+      · by_cases h2 : v = 2 * c
+        · have hsp : Reach [⟨a,a,c⟩] [v] [v / 2, (v + 1) / 2] :=
+            reach_move [] (Local.nsplit v (by omega)
+              (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+          rw [show v / 2 = c from by omega, show (v + 1) / 2 = c from by omega] at hsp
+          rw [show v - c = c from by omega]; exact hsp
+        · by_cases h3 : v = 2 * c + 1
+          · have hsp : Reach [⟨a,a,c⟩] [v] [v / 2, (v + 1) / 2] :=
+              reach_move [] (Local.nsplit v (by omega)
+                (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+            rw [show v / 2 = c from by omega, show (v + 1) / 2 = c + 1 from by omega] at hsp
+            rw [show v - c = c + 1 from by omega]; exact hsp
+          · have hsp : Reach [⟨a,a,c⟩] [v] [v / 2, (v + 1) / 2] :=
+              reach_move [] (Local.nsplit v (by omega)
+                (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+            have hpe := ih (v / 2) (by omega) (by omega)
+            have hfr : Reach [⟨a,a,c⟩] [v / 2, (v + 1) / 2] [c, v / 2 - c, (v + 1) / 2] := by
+              have := reach_frame [(v + 1) / 2] hpe; simpa using this
+            have hcc : ∀ f ∈ ([⟨a,a,c⟩] : Config),
+                ¬ ((f.a = v / 2 - c ∧ f.b = (v + 1) / 2) ∨ (f.a = (v + 1) / 2 ∧ f.b = v / 2 - c)) := by
+              simp only [List.mem_singleton, forall_eq]; omega
+            have hm0 : Reach [⟨a,a,c⟩] [v / 2 - c, (v + 1) / 2] [v / 2 - c + (v + 1) / 2] :=
+              reach_move [] (Local.nmerge (v / 2 - c) ((v + 1) / 2) hcc) (List.Perm.refl _) (Reach.refl _)
+            have hmg : Reach [⟨a,a,c⟩] [c, v / 2 - c, (v + 1) / 2] [c, v - c] := by
+              have := reach_frame_left [c] hm0
+              rw [show v / 2 - c + (v + 1) / 2 = v - c from by omega] at this
+              simpa using this
+            exact reach_trans hsp (reach_trans hfr hmg)
+
+/-- Peel `j` copies of `c`: `[v] → c^j ++ [v - j·c]` (for `v ≥ j·c + 1`). -/
+theorem peelcMany (a c : Nat) (hca : c < a) (hc3 : 3 ≤ c) :
+    ∀ j v, j * c + 1 ≤ v → Reach [⟨a,a,c⟩] [v] (List.replicate j c ++ [v - j * c]) := by
+  intro j
+  induction j with
+  | zero => intro v hv; simpa using Reach.refl [v]
+  | succ j ih =>
+    intro v hv
+    have hsm : (j + 1) * c = j * c + c := by rw [Nat.succ_mul]
+    have hp := peelc a c hca hc3 v (by omega)
+    have hrec := ih (v - c) (by omega)
+    have hfr := reach_frame_left [c] hrec
+    have e1 : c :: (List.replicate j c ++ [v - c - j * c]) = List.replicate (j + 1) c ++ [v - (j + 1) * c] := by
+      rw [show v - c - j * c = v - (j + 1) * c from by omega, List.replicate_succ, List.cons_append]
+    have e2 : [c] ++ (List.replicate j c ++ [v - c - j * c]) = c :: (List.replicate j c ++ [v - c - j * c]) := by simp
+    rw [e2, e1] at hfr
+    exact reach_trans hp hfr
+
+/-- Build `[m·c]` by merging `m` copies of `c` (`{c, jc} → (j+1)c`, normal since `c ≠ a`). -/
+theorem gatherCval (a c : Nat) (hca : c < a) : ∀ m, 1 ≤ m → Reach [⟨a,a,c⟩] (List.replicate m c) [m * c] := by
+  intro m
+  induction m with
+  | zero => intro h; omega
+  | succ m ih =>
+    intro _
+    rcases Nat.eq_zero_or_pos m with hm0 | hmpos
+    · subst hm0; simpa using Reach.refl [c]
+    · have prev := ih hmpos
+      have hcc : ∀ f ∈ ([⟨a,a,c⟩] : Config), ¬ ((f.a = c ∧ f.b = m * c) ∨ (f.a = m * c ∧ f.b = c)) := by
+        simp only [List.mem_singleton, forall_eq]; omega
+      have step : Reach [⟨a,a,c⟩] [c, m * c] [(m + 1) * c] := by
+        have hm := reach_move [] (Local.nmerge c (m * c) hcc) (List.Perm.refl _) (Reach.refl _)
+        rw [show c + m * c = (m + 1) * c from by rw [Nat.succ_mul]; omega] at hm
+        exact hm
+      have hfr : Reach [⟨a,a,c⟩] (c :: List.replicate m c) [c, m * c] := by
+        have := reach_frame_left [c] prev; simpa using this
+      rw [List.replicate_succ]
+      exact reach_trans hfr step
+
+/-- **Climb pump for the trap `⟨a,a,c⟩`** (`c < a`): `[n] → [n + (2a-c)]`, `n ≥ 2a+1`.
+    Peel a `c`, false-split `c→{a,a}`, remerge. -/
+theorem climb_aac (a c : Nat) (hca : c < a) (hc3 : 3 ≤ c) :
+    ∀ n, 2 * a + 1 ≤ n → Reach [⟨a,a,c⟩] [n] [n + (2 * a - c)] := by
+  intro n hn
+  have hp := peelc a c hca hc3 n (by omega)
+  have hfs : Reach [⟨a,a,c⟩] [c, n - c] [a, a, n - c] := by
+    have hm := reach_move [n - c] (Local.fsplit ⟨a,a,c⟩ (List.mem_singleton.2 rfl)) (List.Perm.refl _) (Reach.refl _)
+    simpa using hm
+  have hm1 : Reach [⟨a,a,c⟩] [a, a, n - c] [a, a + (n - c)] := by
+    have hcc : ∀ f ∈ ([⟨a,a,c⟩] : Config), ¬ ((f.a = a ∧ f.b = n - c) ∨ (f.a = n - c ∧ f.b = a)) := by
+      simp only [List.mem_singleton, forall_eq]; omega
+    have hm0 : Reach [⟨a,a,c⟩] [a, n - c] [a + (n - c)] :=
+      reach_move [] (Local.nmerge a (n - c) hcc) (List.Perm.refl _) (Reach.refl _)
+    have := reach_frame_left [a] hm0; simpa using this
+  have hm2 : Reach [⟨a,a,c⟩] [a, a + (n - c)] [n + (2 * a - c)] := by
+    have hcc : ∀ f ∈ ([⟨a,a,c⟩] : Config), ¬ ((f.a = a ∧ f.b = a + (n - c)) ∨ (f.a = a + (n - c) ∧ f.b = a)) := by
+      simp only [List.mem_singleton, forall_eq]; omega
+    have hm0 := reach_move [] (Local.nmerge a (a + (n - c)) hcc) (List.Perm.refl _) (Reach.refl _)
+    rw [show a + (a + (n - c)) = n + (2 * a - c) from by omega] at hm0
+    exact hm0
+  exact reach_trans hp (reach_trans hfs (reach_trans hm1 hm2))
+
+/-- **Descend pump for the trap `⟨a,a,c⟩`** (`c < a`, `c ∣ a`): `[n+(2a-c)] → [n]`.
+    Peel `2(a/c)` copies of `c`, gather two `[a]`s, false-merge `{a,a}→c`, remerge. -/
+theorem descend_aac (a c : Nat) (hca : c < a) (hc3 : 3 ≤ c) (hdvd : c ∣ a) :
+    ∀ n, 2 * a + 1 ≤ n → Reach [⟨a,a,c⟩] [n + (2 * a - c)] [n] := by
+  intro n hn
+  obtain ⟨m, hm⟩ := hdvd
+  have hm1 : 1 ≤ m := by rcases m with _ | k <;> omega
+  have hmc : m * c = a := by rw [Nat.mul_comm]; omega
+  have h2mc : 2 * m * c = 2 * a := by rw [Nat.mul_assoc]; omega
+  have ga : Reach [⟨a,a,c⟩] (List.replicate m c) [a] := by
+    have := gatherCval a c hca m hm1; rwa [hmc] at this
+  have hpe := peelcMany a c hca hc3 (2 * m) (n + (2 * a - c)) (by omega)
+  rw [show n + (2 * a - c) - 2 * m * c = n - c from by omega] at hpe
+  have e : List.replicate (2 * m) c ++ [n - c]
+      = List.replicate m c ++ (List.replicate m c ++ [n - c]) := by
+    rw [show 2 * m = m + m from by omega, ← repl_add, List.append_assoc]
+  rw [e] at hpe
+  have g1 : Reach [⟨a,a,c⟩] (List.replicate m c ++ (List.replicate m c ++ [n - c]))
+      (a :: (List.replicate m c ++ [n - c])) := by
+    have := reach_frame (List.replicate m c ++ [n - c]) ga; simpa using this
+  have g2 : Reach [⟨a,a,c⟩] (a :: (List.replicate m c ++ [n - c])) [a, a, n - c] := by
+    have := reach_frame_left [a] (reach_frame [n - c] ga); simpa using this
+  have hfm : Reach [⟨a,a,c⟩] [a, a, n - c] [c, n - c] := by
+    have hm := reach_move [n - c] (Local.fmerge ⟨a,a,c⟩ (List.mem_singleton.2 rfl)) (List.Perm.refl _) (Reach.refl _)
+    simpa using hm
+  have hmg : Reach [⟨a,a,c⟩] [c, n - c] [n] := by
+    have hcc : ∀ f ∈ ([⟨a,a,c⟩] : Config), ¬ ((f.a = c ∧ f.b = n - c) ∨ (f.a = n - c ∧ f.b = c)) := by
+      simp only [List.mem_singleton, forall_eq]; omega
+    have hmm := reach_move [] (Local.nmerge c (n - c) hcc) (List.Perm.refl _) (Reach.refl _)
+    rw [show c + (n - c) = n from by omega] at hmm
+    exact hmm
+  exact reach_trans hpe (reach_trans g1 (reach_trans g2 (reach_trans hfm hmg)))
+
+/-- **Full sufficiency for the `a=b` trap `⟨a,a,c⟩` with `c ∣ a`, `c < a`, `3 ≤ c`** —
+    the genuine traps (`6+6=3`, `10+10=5`, `12+12=3`, …), closed *without* the all-ones
+    hub. Every `s,t ≥ M = 2a+1` with `(2a-c) ∣ (t−s)` are interreachable. -/
+theorem single_sufficiency_aac (a c : Nat) (hca : c < a) (hc3 : 3 ≤ c) (hdvd : c ∣ a) :
+    ∀ s t, Mval [⟨a,a,c⟩] ≤ s → Mval [⟨a,a,c⟩] ≤ t →
+      gz [⟨a,a,c⟩] ∣ ((t : Int) - s) → Reach [⟨a,a,c⟩] [s] [t] := by
+  have hg : gnat [⟨a,a,c⟩] = 2 * a - c := by rw [gnat_dpos a a c (by omega)]; omega
+  have hM : Mval [⟨a,a,c⟩] = 2 * a + 1 := by
+    have hH : Hnat [⟨a,a,c⟩] = 2 * a := by rw [Hnat_dpos a a c (by omega)]; omega
+    show Hnat [⟨a,a,c⟩] + 1 = 2 * a + 1; rw [hH]
+  have climb : ∀ n, Mval [⟨a,a,c⟩] ≤ n → Reach [⟨a,a,c⟩] [n] [n + gnat [⟨a,a,c⟩]] := by
+    intro n hn; rw [hg]; exact climb_aac a c hca hc3 n (by omega)
+  have descend : ∀ n, Mval [⟨a,a,c⟩] ≤ n → Reach [⟨a,a,c⟩] [n + gnat [⟨a,a,c⟩]] [n] := by
+    intro n hn; rw [hg]; exact descend_aac a c hca hc3 hdvd n (by omega)
+  intro s t hs ht hg'
+  exact sufficiency_of_pumps climb descend hs ht hg'
+
+/-- The trap `6 + 6 = 3` (`a=b=2c`, `[M]` reaches no ones-pile) is completely solvable
+    above `M = 13`. -/
+theorem solvable_6_6_3 {s t : Nat} (hs : 13 ≤ s) (ht : 13 ≤ t)
+    (h : (9:Int) ∣ ((t:Int) - s)) : Reach [⟨6,6,3⟩] [s] [t] := by
+  refine single_sufficiency_aac 6 3 (by omega) (by omega) ⟨2, by omega⟩ s t ?_ ?_ ?_
+  · have : Mval [⟨6,6,3⟩] = 13 := by decide
+    omega
+  · have : Mval [⟨6,6,3⟩] = 13 := by decide
+    omega
+  · have : gz [⟨6,6,3⟩] = 9 := by decide
+    rw [this]; exact h
+
+#print axioms YaStupid.single_sufficiency_aac
+#print axioms YaStupid.solvable_6_6_3
+
+end YaStupid
