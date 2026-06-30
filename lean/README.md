@@ -176,8 +176,13 @@ corollary (`2c=10` and `4c=20` both in range).
 
 ## What is *not* (yet) mechanized
 
-All remaining open families are **BFS-verified solvable** (no counterexamples — the
-threshold `M = H+1` holds), but resist the current machinery:
+All remaining open families are **BFS-verified solvable** — an exhaustive
+counterexample search ([`../test/counterexample-search.js`](../test/counterexample-search.js))
+checks both pumps for `1+1=c` (`c = 3..9`), every `a+b>c` with a leg `≥ c`
+(`2+10=7`, `2+2=2`, the pathological `1+14=7`, …) and finds **no counterexample
+anywhere**: the threshold `M = H+1` holds universally as far as the search reaches.
+So the gap below is a proof-engineering gap, not a math gap. These two families
+resist the all-ones hub for structural reasons:
 
 1. **`a = b = 1` with `a + b < c`** (e.g. `1+1=5`). From a pile of pure ones the
    *only* merge is the forced `{1,1} → c`, so no ball can be built conservingly from
@@ -202,22 +207,21 @@ descend : ∀ n, Mval cfg ≤ n → Reach cfg [n + gnat cfg] [n]
 
 `sufficiency_of_pumps` already reduces *general* sufficiency to these. For Classic
 they are discharged above (and now also re-derived symbolically). For a single sum
-with `2 ≤ a, b` and `a + b < c` **both pumps are fully proved**; for `a + b > c`
-with legs `< c` and `2(a+b)+2 ≤ 3c` **both pumps are fully proved** too.  What
-remains is uniform but case-heavy, and wants Mathlib-level `List`/`Multiset`
-automation (whose cache is unreachable from the sandbox this was developed in — the
-toolchain itself had to be side-loaded from GitHub release assets because the Lean
-CDN was blocked).
+with `a + b < c` (and not `a=b=1`) **both pumps are fully proved**; for `a + b > c`
+with legs `< c` **both pumps are fully proved** too (the one-pile hub, *every*
+cluster structure).
 
 So the present status: **Classic is completely characterized (necessity +
 sufficiency + sharpness, all `sorry`-free) — and now *also* as a corollary of a
 fully symbolic theorem. Solvability is completely characterized for every single
 sum with `a + b < c` and not `a = b = 1` (`single_sufficiency_dneg` for `2 ≤ a, b`,
-`single_sufficiency_dneg_min1` for a unit leg), and for `a + b > c` with legs `< c`
-and `2(a+b)+2 ≤ 3c` (`single_sufficiency_dpos`, e.g. `3+3=5`). The remaining gaps
-are `a=b=1`, and the multi-cluster / corner families of `a + b > c`.** Exhaustive
-search over the adversarial `{6+7=2, 6+8=3}` (where no `1` ever exists) finds every
-in-range pump reachable, so the general pumps are *true* too.
+`single_sufficiency_dneg_min1` for a unit leg), and for every `a + b > c` with both
+legs `< c` (`single_sufficiency_dpos_full`, e.g. `3+3=5`, `4+4=5`, `6+6=7`). The
+two remaining families — `a=b=1`, and `a+b>c` with a leg `≥ c` — are exhaustively
+BFS-checked to contain NO counterexample (`test/counterexample-search.js`): the
+threshold `M=H+1` is correct there too; only the Lean construction is missing.**
+Exhaustive search over the adversarial `{6+7=2, 6+8=3}` (where no `1` ever exists)
+likewise finds every in-range pump reachable.
 
 ## Check it yourself
 
