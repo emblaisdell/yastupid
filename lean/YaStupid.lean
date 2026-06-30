@@ -4424,3 +4424,103 @@ theorem solvable_5_5_3 {s t : Nat} (hs : 11 ≤ s) (ht : 11 ≤ t)
 #print axioms YaStupid.solvable_5_5_3
 
 end YaStupid
+
+
+namespace YaStupid
+
+/-! ### The general inexact `legGE`: legs scatter ⇒ sufficiency (`2 ≤ a, b`)
+
+`single_sufficiency_legGE` required *exact* leg scatters `Reach [a] (1^a)`.  But the
+gain pump needs no such thing: building the `c` *at the end* of the reservoir and
+`scatBig`-ing both legs left-to-right off the growing reservoir gains exactly `g`
+unconditionally (`ganG_uncond`).  So only the initial scatter `scat` needs the legs,
+and it needs only the **inexact** facts `∃ r, a ≤ r ∧ Reach [a] (1^r)`.  This
+`single_sufficiency_legGE_inexact` subsumes `legGE`, `_ac`, and `_g` (for `2 ≤ a`):
+every `2 ≤ a, b`, `c ≥ 3`, `c < a+b` config reduces to *"do the legs scatter?"*. -/
+
+/-- Scatter any `[v]` given inexact leg scatters (`v=c` uses them; else halve). -/
+theorem scatFromLegs (a b c : Nat) (hc3 : 3 ≤ c) (hab : c < a + b)
+    (la : ∃ ra, a ≤ ra ∧ Reach [⟨a,b,c⟩] [a] (List.replicate ra 1))
+    (lb : ∃ rb, b ≤ rb ∧ Reach [⟨a,b,c⟩] [b] (List.replicate rb 1)) :
+    ∀ v, 1 ≤ v → ∃ r, v ≤ r ∧ Reach [⟨a,b,c⟩] [v] (List.replicate r 1) := by
+  intro v
+  induction v using Nat.strongRecOn with
+  | ind v ih =>
+    intro hv
+    by_cases hvc : v = c
+    · obtain ⟨ra, hra, Ra⟩ := la
+      obtain ⟨rb, hrb, Rb⟩ := lb
+      refine ⟨ra + rb, by omega, ?_⟩
+      rw [hvc]
+      have hfs : Reach [⟨a,b,c⟩] [c] [a, b] := by
+        have hm := reach_move [] (Local.fsplit ⟨a,b,c⟩ (List.mem_singleton.2 rfl)) (List.Perm.refl _) (Reach.refl _)
+        simpa using hm
+      have st1 : Reach [⟨a,b,c⟩] [a, b] (List.replicate ra 1 ++ [b]) := by
+        have := reach_frame [b] Ra; simpa using this
+      have st2 : Reach [⟨a,b,c⟩] (List.replicate ra 1 ++ [b]) (List.replicate ra 1 ++ List.replicate rb 1) := by
+        have := reach_frame_left (List.replicate ra 1) Rb; simpa using this
+      rw [replicate_one_add] at st2
+      exact reach_trans hfs (reach_trans st1 st2)
+    · by_cases hlt : v < c
+      · exact ⟨v, by omega, scatterClean a b c v hv hlt⟩
+      · obtain ⟨r1, hr11, hr1r⟩ := ih (v / 2) (by omega) (by omega)
+        obtain ⟨r2, hr21, hr2r⟩ := ih ((v + 1) / 2) (by omega) (by omega)
+        refine ⟨r1 + r2, by omega, ?_⟩
+        have hns : Reach [⟨a,b,c⟩] [v] [v / 2, (v + 1) / 2] :=
+          reach_move [] (Local.nsplit v (by omega)
+            (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+        have st1 : Reach [⟨a,b,c⟩] [v / 2, (v + 1) / 2] (List.replicate r1 1 ++ [(v + 1) / 2]) := by
+          have := reach_frame [(v + 1) / 2] hr1r; simpa using this
+        have st2 : Reach [⟨a,b,c⟩] (List.replicate r1 1 ++ [(v + 1) / 2])
+            (List.replicate r1 1 ++ List.replicate r2 1) := by
+          have := reach_frame_left (List.replicate r1 1) hr2r; simpa using this
+        rw [replicate_one_add] at st2
+        exact reach_trans hns (reach_trans st1 st2)
+
+/-- Gain exactly `g`, **unconditionally** (`2 ≤ a, b`, `c ≥ 3`): build `c` at the
+    pile's end, false-split, `scatBig` both legs left-to-right off the reservoir. -/
+theorem ganG_uncond (a b c : Nat) (ha2 : 2 ≤ a) (hb2 : 2 ≤ b) (hc3 : 3 ≤ c) (hab : c < a + b) :
+    ∀ K, a + b + 1 ≤ K → Reach [⟨a,b,c⟩] (List.replicate K 1) (List.replicate (K + (a + b - c)) 1) := by
+  intro K hK
+  have gC : Reach [⟨a,b,c⟩] (List.replicate c 1) [c] := gatherBig a b c ha2 hb2 c (by omega)
+  have hsplit : List.replicate K (1:Nat) = List.replicate (K - c) 1 ++ List.replicate c 1 := by
+    rw [replicate_one_add]; congr 1; omega
+  have s1 : Reach [⟨a,b,c⟩] (List.replicate K 1) (List.replicate (K - c) 1 ++ [c]) := by
+    rw [hsplit]; have := reach_frame_left (List.replicate (K - c) 1) gC; simpa using this
+  have s2 : Reach [⟨a,b,c⟩] (List.replicate (K - c) 1 ++ [c]) (List.replicate (K - c) 1 ++ [a, b]) := by
+    have hm := reach_frame_left (List.replicate (K - c) 1)
+      (reach_move [] (Local.fsplit ⟨a,b,c⟩ (List.mem_singleton.2 rfl)) (List.Perm.refl _) (Reach.refl _))
+    simpa using hm
+  -- scatBig a off reservoir 1^(K-c), framed by [b]
+  have sca := scatBig a b c hc3 (by omega) a (by omega) (K - c) (by omega)
+  have e2 : List.replicate (K - c) (1:Nat) ++ [a, b] = (List.replicate (K - c) 1 ++ [a]) ++ [b] := by simp
+  have s3 : Reach [⟨a,b,c⟩] ((List.replicate (K - c) 1 ++ [a]) ++ [b]) (List.replicate (K - c + a) 1 ++ [b]) :=
+    reach_frame [b] sca
+  -- scatBig b off reservoir 1^(K-c+a)
+  have scb := scatBig a b c hc3 (by omega) b (by omega) (K - c + a) (by omega)
+  rw [show K - c + a + b = K + (a + b - c) from by omega] at scb
+  rw [e2] at s2
+  exact reach_trans s1 (reach_trans s2 (reach_trans s3 scb))
+
+/-- **General inexact `legGE` (`2 ≤ a, b`, `c ≥ 3`, `c < a+b`).** Full sufficiency
+    given only that each leg scatters to *some* ones-pile.  Subsumes `legGE` (exact
+    legs), `single_sufficiency_ac`, `single_sufficiency_g` (for `2 ≤ a`). -/
+theorem single_sufficiency_legGE_inexact (a b c : Nat) (ha2 : 2 ≤ a) (hb2 : 2 ≤ b)
+    (hc3 : 3 ≤ c) (hab : c < a + b)
+    (la : ∃ ra, a ≤ ra ∧ Reach [⟨a,b,c⟩] [a] (List.replicate ra 1))
+    (lb : ∃ rb, b ≤ rb ∧ Reach [⟨a,b,c⟩] [b] (List.replicate rb 1)) :
+    ∀ s t, Mval [⟨a,b,c⟩] ≤ s → Mval [⟨a,b,c⟩] ≤ t →
+      gz [⟨a,b,c⟩] ∣ ((t : Int) - s) → Reach [⟨a,b,c⟩] [s] [t] :=
+  sufficiency_from_hub a b c hab
+    (gatherBig a b c ha2 hb2)
+    (loseGposGen a b c ha2 hb2 hc3 hab)
+    (fun K hK => ⟨1, by omega, by
+      rw [show K + 1 * (a + b - c) = K + (a + b - c) from by omega]
+      exact ganG_uncond a b c ha2 hb2 hc3 hab K hK⟩)
+    (scatFromLegs a b c hc3 hab la lb)
+
+#print axioms YaStupid.scatFromLegs
+#print axioms YaStupid.ganG_uncond
+#print axioms YaStupid.single_sufficiency_legGE_inexact
+
+end YaStupid
