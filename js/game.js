@@ -332,20 +332,18 @@ function toast(msg) {
 function show(id) { el(id).classList.remove('hidden'); }
 function hide(id) { el(id).classList.add('hidden'); }
 function classicHelp() {
-  return `<p><b>Goal.</b> Fuse and split until a single ball shows the target.</p>
+  return `<p><b>Goal.</b> Fuse and split until a you have a single ball with the target value.</p>
     <p><b>Tap</b> a ball to split it in half (odd numbers split into the two nearest halves).</p>
-    <p><b>Drag</b> one ball onto another to fire a beam that fuses them into their sum.</p>
-    <p>The one lie: <b>9 + 10 = 21</b>. A <b>21</b> tapped pops into <b>9</b> and <b>10</b>, and
-       dragging <b>9</b> onto <b>10</b> makes <b>21</b> (not 19). That tiny error is the only way
-       the total can change — and the whole point.</p>`;
+    <p><b>Drag</b> one ball to another to fuse them into their sum.</p>
+    <p>If this seems impossible, remember the Vine Fallacy: <b>9+10=21</b>.</p>`;
 }
 function advancedHelp() {
-  return `<p><b>Goal.</b> Reach a single ball of the target — but now several lies run at once.</p>
-    <p>The <b>legend</b> along the bottom lists every false sum as balls (<i>a + b = c</i>). Tapping a
+  return `<p><b>Goal.</b> Reach a single ball of the target, but now with dubious equalities at once.</p>
+    <p>Along the bottom there are several false sums (<i>a + b = c</i>). Tapping a
        <b>c</b> splits it into its pair <b>a, b</b>; dragging <b>a</b> onto <b>b</b> fuses to <b>c</b>
        (not a+b). Ordinary tap-to-halve and drag-to-add still apply to all other numbers.</p>
-    <p>Tap <b>+</b> in the legend to add a random lie, or <b>×</b> to remove one. Each change re-deals a
-       fresh puzzle — and stacking lies opens up many more reachable targets than Classic.</p>`;
+    <p>Tap <b>+</b> in the legend to add a random dubious equality, or <b>×</b> to remove one. Each change re-deals a
+       fresh puzzle.</p>`;
 }
 function openMenu() {
   document.querySelectorAll('.seg-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
