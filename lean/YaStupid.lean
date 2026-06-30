@@ -4701,3 +4701,89 @@ theorem solvable_15_15_4 {s t : Nat} (hs : 31 ≤ s) (ht : 31 ≤ t)
 #print axioms YaStupid.solvable_15_15_4
 
 end YaStupid
+
+
+namespace YaStupid
+
+/-! ### One `Scat` leg suffices: `scatAll`
+
+If `c` itself scatters to ones (`hc_scat`), then *every* `[v]` does (`scatAll`:
+`v=c` uses `hc_scat`, else halve and recurse).  And `c` scatters as soon as **one**
+leg is `Scat`: `fsplit c→{a,b}`, scatter that leg (`scatStandaloneScat`), `scatBig`
+the other.  So **one `Scat` leg closes the config** — even if the *other* leg is
+`c·2^k`.  Only configs with *both* legs `c·2^k` (genuine traps) and `c = 2` remain. -/
+
+/-- Given `c` scatters, every `[v]` scatters (the locked `c` is the only obstruction). -/
+theorem scatAll (a b c : Nat) (hc3 : 3 ≤ c) (hsafe : ¬ ((a = 1 ∧ b = c) ∨ (a = c ∧ b = 1)))
+    (hc_scat : ∃ rc, c ≤ rc ∧ Reach [⟨a,b,c⟩] [c] (List.replicate rc 1)) :
+    ∀ v, 1 ≤ v → ∃ r, v ≤ r ∧ Reach [⟨a,b,c⟩] [v] (List.replicate r 1) := by
+  intro v
+  induction v using Nat.strongRecOn with
+  | ind v ih =>
+    intro hv
+    by_cases hvc : v = c
+    · rw [hvc]; exact hc_scat
+    · by_cases hlt : v < c
+      · exact ⟨v, by omega, scatterClean a b c v hv hlt⟩
+      · obtain ⟨r1, hr11, hr1r⟩ := ih (v / 2) (by omega) (by omega)
+        obtain ⟨r2, hr21, hr2r⟩ := ih ((v + 1) / 2) (by omega) (by omega)
+        refine ⟨r1 + r2, by omega, ?_⟩
+        have hns : Reach [⟨a,b,c⟩] [v] [v / 2, (v + 1) / 2] :=
+          reach_move [] (Local.nsplit v (by omega)
+            (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+        have st1 : Reach [⟨a,b,c⟩] [v / 2, (v + 1) / 2] (List.replicate r1 1 ++ [(v + 1) / 2]) := by
+          have := reach_frame [(v + 1) / 2] hr1r; simpa using this
+        have st2 : Reach [⟨a,b,c⟩] (List.replicate r1 1 ++ [(v + 1) / 2])
+            (List.replicate r1 1 ++ List.replicate r2 1) := by
+          have := reach_frame_left (List.replicate r1 1) hr2r; simpa using this
+        rw [replicate_one_add] at st2
+        exact reach_trans hns (reach_trans st1 st2)
+
+/-- **Full sufficiency whenever *one* leg is `Scat`** (`2 ≤ a, b`, `c ≥ 3`, `c < a+b`).
+    The `Scat` leg scatters `c`; `scatAll` then scatters the other leg too (even if it
+    is `c·2^k`).  Subsumes `single_sufficiency_scat`. -/
+theorem single_sufficiency_oneScat (a b c : Nat) (ha2 : 2 ≤ a) (hb2 : 2 ≤ b)
+    (hc3 : 3 ≤ c) (hab : c < a + b) (hs : Scat c a ∨ Scat c b) :
+    ∀ s t, Mval [⟨a,b,c⟩] ≤ s → Mval [⟨a,b,c⟩] ≤ t →
+      gz [⟨a,b,c⟩] ∣ ((t : Int) - s) → Reach [⟨a,b,c⟩] [s] [t] := by
+  have hsafe : ¬ ((a = 1 ∧ b = c) ∨ (a = c ∧ b = 1)) := by omega
+  have hfs : Reach [⟨a,b,c⟩] [c] [a, b] := by
+    have hm := reach_move [] (Local.fsplit ⟨a,b,c⟩ (List.mem_singleton.2 rfl)) (List.Perm.refl _) (Reach.refl _)
+    simpa using hm
+  have hc_scat : ∃ rc, c ≤ rc ∧ Reach [⟨a,b,c⟩] [c] (List.replicate rc 1) := by
+    refine ⟨a + b, by omega, ?_⟩
+    rcases hs with hsa | hsb
+    · have sa := scatStandaloneScat a b c hc3 hsafe hsa
+      have s1 : Reach [⟨a,b,c⟩] [a, b] (List.replicate a 1 ++ [b]) := by
+        have := reach_frame [b] sa; simpa using this
+      have sb := scatBig a b c hc3 hsafe b (by omega) a (by omega)
+      exact reach_trans hfs (reach_trans s1 sb)
+    · have sb := scatStandaloneScat a b c hc3 hsafe hsb
+      have s1 : Reach [⟨a,b,c⟩] [a, b] (a :: List.replicate b 1) := by
+        have := reach_frame_left [a] sb; simpa using this
+      have e : a :: List.replicate b 1 = [a] ++ List.replicate b 1 := by simp
+      rw [e] at s1
+      have sbr := scatBigR a b c hc3 hsafe a (by omega) b (by omega)
+      exact reach_trans hfs (reach_trans s1 sbr)
+  exact single_sufficiency_legGE_inexact a b c ha2 hb2 hc3 hab
+    (scatAll a b c hc3 hsafe hc_scat a (by omega))
+    (scatAll a b c hc3 hsafe hc_scat b (by omega))
+
+/-- The lie `8 + 9 = 4` — leg `8 = 2c` is `c·2^k` (not `Scat`), but leg `9` is — is
+    completely solvable above `M = 18`. -/
+theorem solvable_8_9_4 {s t : Nat} (hs : 18 ≤ s) (ht : 18 ≤ t)
+    (h : (13:Int) ∣ ((t:Int) - s)) : Reach [⟨8,9,4⟩] [s] [t] := by
+  have hsb : Scat 4 9 := Scat.bigC (by omega) (Scat.mid (by omega) (by omega))
+  refine single_sufficiency_oneScat 8 9 4 (by omega) (by omega) (by omega) (by omega) (Or.inr hsb) s t ?_ ?_ ?_
+  · have : Mval [⟨8,9,4⟩] = 18 := by decide
+    omega
+  · have : Mval [⟨8,9,4⟩] = 18 := by decide
+    omega
+  · have : gz [⟨8,9,4⟩] = 13 := by decide
+    rw [this]; exact h
+
+#print axioms YaStupid.scatAll
+#print axioms YaStupid.single_sufficiency_oneScat
+#print axioms YaStupid.solvable_8_9_4
+
+end YaStupid
