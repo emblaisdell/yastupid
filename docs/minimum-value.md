@@ -136,9 +136,9 @@ the remainder into one ball the same way. $\square$
 > heart of sufficiency, and the bookkeeping needed to make it fully rigorous for
 > *every* configuration is more delicate than this paragraph (the locked values and
 > forbidden pairs interact). It is now **machine‑checked for every single sum with
-> $2\le a,b$ and $a+b<c$** (`single_sufficiency_dneg`, see §8) — which includes
-> Classic — leaving only the $\min(a,b)=1$ edge and the dual $a+b>c$ case
-> unmechanized. As evidence those remaining cases are also *true*: an exhaustive
+> $a+b<c$ (except $a=b=1$), and for $a+b>c$ with legs $<c$ and $2(a+b)+2\le 3c$**
+> (see §8) — which includes Classic. As evidence the remaining cases are also *true*:
+> an exhaustive
 > search confirms every in‑range pump for the adversarial $\{6+7=2,\,6+8=3\}$ above
 > (where no $1$ ever exists), and Lean‑checked witnesses solve $2+2=2$'s in‑range
 > puzzle $5\to7$ and Classic's $19\to21$ / $21\to19$.
@@ -370,10 +370,16 @@ Classical.choice, Quot.sound`).
   locked `c` plus a spare unit becomes `c+1` (normal) and scatters; `loseGpos` then
   drops a pile of ones by `g`. `solvable_3_3_5` is a concrete corollary.
 
-The remaining open pieces are (1) the `min(a,b)=1` edge of `a + b < c` (build-a-`c`
-must dodge `{1, max(a,b)} = {a,b}`, with `a=b=1` special); and (2) `a+b>c` outside
-the single-cluster family — `2(a+b)+2 > 3c` (so `4c, …` also appear and a
-scatter-past-several-clusters is needed), a leg `≥ c`, or `c ≤ (a+b)/2` (e.g.
+- **`single_sufficiency_dneg_min1`** closes the `min(a,b)=1` edge of `a+b < c`
+  (`a=1, b≥2`; symmetric for `b=1`). The only new device is **`gatherMin1`**: build
+  any `v ≥ b+2` from ones while dodging the sole forbidden merge `{1,b}`, by skipping
+  `b+1` (build `[b]` and a spare `[2]`, merge to `b+2`, reel ones on). So **all of
+  `a+b < c` is closed except the degenerate `a=b=1`** (where ones cannot merge).
+  `solvable_1_2_5` is a concrete corollary.
+
+The remaining open pieces are (1) `a=b=1` with `a+b<c` (e.g. `1+1=5`); and (2)
+`a+b>c` outside the single-cluster family — `2(a+b)+2 > 3c` (so `4c, …` also appear
+and a scatter-past-several-clusters is needed), a leg `≥ c`, or `c ≤ (a+b)/2` (e.g.
 `2+2=2`). All are uniform but case-heavy. For any *concrete* single sum the base is
 finite and dischargeable by BFS (the Classic pipeline), so every concrete instance
 is fully provable. See [`../lean/README.md`](../lean/README.md).

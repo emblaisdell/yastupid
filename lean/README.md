@@ -143,13 +143,23 @@ value in the base (no `4c, …`), so the scatter-problematic set is again exactl
 
 Reeling ones onto any base uses `mergeUnitsLow` (legs `≥ 2` ⇒ `{v+i,1} ≠ {a,b}`).
 
+## `a + b < c` is now complete except `a = b = 1`
+
+The `min(a,b)=1` edge is closed: **`single_sufficiency_dneg_min1`** (`a=1, b≥2`;
+by symmetry `b=1, a≥2`, since `{a,b}` is unordered). The climb side needed nothing
+new (it only builds legs `≤ max = b` via the capped `gather`). For descend,
+**`gatherMin1`** replaces `gatherBig`: it builds any `v ≥ b+2` from ones while
+dodging the sole forbidden merge `{1,b}`, by *skipping* `b+1` — build `[b]` and a
+spare `[2]`, merge to `b+2`, then reel ones on. Since descend only ever builds the
+harvested `c > a+b = b+1` and targets `n ≥ M = c+1` (all `≥ b+2`), `b+1` is never
+needed. `solvable_1_2_5` is a concrete corollary.
+
+The only `a+b<c` case left is the doubly-degenerate **`a = b = 1`**, where ones
+cannot merge at all (the only merge of two `1`s is the forced `{1,1} → c`).
+
 ## What is *not* (yet) mechanized
 
-1. **The `min(a,b) = 1` sub-case of `a + b < c`.** The `a+b<c` development assumes
-   `2 ≤ a, b` (so `gatherBig` is clean). When a leg is `1`, building a `c` from ones
-   must route around the one forbidden merge `{1, max(a,b)} = {a,b}` (and `a=b=1` is
-   special — the only merge of two ones is the forced `{1,1} → c`). Same shape,
-   extra cases.
+1. **`a = b = 1` with `a + b < c`** (e.g. `1+1=5`) — degenerate as above.
 2. **`a + b > c` outside the single-cluster family** — `2(a+b)+2 > 3c` (so `4c, …`
    also sit in the descend's high start range `[M+g, 2H+2g]`, needing a uniform
    scatter-past-*several*-clusters), a leg `≥ c` (e.g. `2+10=7`), or `c ≤ (a+b)/2`
@@ -177,12 +187,12 @@ CDN was blocked).
 So the present status: **Classic is completely characterized (necessity +
 sufficiency + sharpness, all `sorry`-free) — and now *also* as a corollary of a
 fully symbolic theorem. Solvability is completely characterized for every single
-sum with `2 ≤ a, b` and either `a + b < c` (`single_sufficiency_dneg`) or
-`a + b > c` with legs `< c` and `2(a+b)+2 ≤ 3c` (`single_sufficiency_dpos`,
-e.g. `3+3=5`). The remaining gaps are the `min(a,b)=1` edge of `a + b < c` and the
-multi-cluster / corner families of `a + b > c`.** Exhaustive search over the
-adversarial `{6+7=2, 6+8=3}` (where no `1` ever exists) finds every in-range pump
-reachable, so the general pumps are *true* too.
+sum with `a + b < c` and not `a = b = 1` (`single_sufficiency_dneg` for `2 ≤ a, b`,
+`single_sufficiency_dneg_min1` for a unit leg), and for `a + b > c` with legs `< c`
+and `2(a+b)+2 ≤ 3c` (`single_sufficiency_dpos`, e.g. `3+3=5`). The remaining gaps
+are `a=b=1`, and the multi-cluster / corner families of `a + b > c`.** Exhaustive
+search over the adversarial `{6+7=2, 6+8=3}` (where no `1` ever exists) finds every
+in-range pump reachable, so the general pumps are *true* too.
 
 ## Check it yourself
 
