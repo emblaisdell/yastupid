@@ -157,14 +157,39 @@ needed. `solvable_1_2_5` is a concrete corollary.
 The only `a+b<c` case left is the doubly-degenerate **`a = b = 1`**, where ones
 cannot merge at all (the only merge of two `1`s is the forced `{1,1} → c`).
 
+### All of `a+b>c` with legs `< c`, via the one-pile hub (`single_sufficiency_dpos_full`)
+
+The single-cluster restriction is now **removed**. Instead of per-cluster
+constructions, route everything through an all-ones *hub*:
+
+- **`scatterRaw_dpos`** — because both legs are `< c`, splitting strictly reduces
+  the max value and the forced `c → {a,b}` lands below `c`, so a strong recursion
+  scatters *any* ball to *some* one-pile `1^r` (with `r ≥ v`; the residue
+  `g ∣ (r−v)` comes for free from `reach_dvd`).
+- **`gainGpos` / `loseGpos`** and the iterators **`onesUpK` / `onesDownK`** walk
+  between one-piles in steps of `g`.
+- **`gatherBig`** rebuilds the target.
+
+So `[s] → 1^r → 1^t → [t]`, handling **arbitrarily many stuck clusters** uniformly
+(`4+4=5`, `5+5=7`, `6+6=7`, …). `solvable_4_4_5` is a genuinely multi-cluster
+corollary (`2c=10` and `4c=20` both in range).
+
 ## What is *not* (yet) mechanized
 
-1. **`a = b = 1` with `a + b < c`** (e.g. `1+1=5`) — degenerate as above.
-2. **`a + b > c` outside the single-cluster family** — `2(a+b)+2 > 3c` (so `4c, …`
-   also sit in the descend's high start range `[M+g, 2H+2g]`, needing a uniform
-   scatter-past-*several*-clusters), a leg `≥ c` (e.g. `2+10=7`), or `c ≤ (a+b)/2`
-   (e.g. `2+2=2`).  The `unlockC`/`loseGpos` machinery is the right tool; only the
-   multi-cluster bookkeeping remains.
+All remaining open families are **BFS-verified solvable** (no counterexamples — the
+threshold `M = H+1` holds), but resist the current machinery:
+
+1. **`a = b = 1` with `a + b < c`** (e.g. `1+1=5`). From a pile of pure ones the
+   *only* merge is the forced `{1,1} → c`, so no ball can be built conservingly from
+   ones (and a one-pile can never descend) — the hub's build/descend steps fail.
+   Climb still works; descend needs a *structural* `c`-harvest (BFS: `1+1=5`,
+   `[9]→[4,5]→fsplit→[4,1,1]→[5,1]→[6]`).
+2. **`a + b > c` with a leg `≥ c`** (e.g. `2+10=7`, and the degenerate `a=b=c`,
+   `2+2=2`). Here `scatterRaw`'s max-value measure fails (the forced
+   `c → {a,b}` can *raise* the max), so the scatter recursion needs a subtler
+   termination measure. *(Note: `c ≤ (a+b)/2` always forces a leg `≥ c`, so it is
+   subsumed here — the `legs < c` hub already covers every `a+b>c` with both
+   legs below `c`, e.g. `6+6=7`.)*
 
 These are intricate but mechanical; they are most comfortable over Mathlib.
 

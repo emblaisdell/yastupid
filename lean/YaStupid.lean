@@ -2435,6 +2435,186 @@ theorem solvable_1_2_5 {s t : Nat} (hs : 6 ≤ s) (ht : 6 ≤ t)
 
 end YaStupid
 
+namespace YaStupid
+
+/-! ### A uniform hub for `a+b>c` with legs `< c` (all cluster structures)
+
+Instead of per-cluster constructions, route everything through an all-ones *hub*.
+Because both legs are `< c`, every ball scatters to ones: splitting strictly
+reduces the max value, and the forced `c → {a,b}` lands below `c`.  The resulting
+one-count `r` is path-dependent but satisfies `r ≥ v` and (via `reach_dvd`)
+`g ∣ (r−v)`.  Then `loseGpos`/`gainGpos` walk between one-piles in steps of `g`,
+and `gatherBig` rebuilds the target.  No `2(a+b)+2 ≤ 3c` restriction. -/
+
+theorem total_replicate_one : ∀ r, total (List.replicate r 1) = r := by
+  intro r; induction r with
+  | zero => rfl
+  | succ k ih => rw [List.replicate_succ, total_cons, ih]; omega
+
+/-- Scatter any ball to *some* all-ones pile (legs `< c`). -/
+theorem scatterRaw_dpos (a b c : Nat) (ha1 : 1 ≤ a) (hb1 : 1 ≤ b) (hac : a < c) (hbc : b < c)
+    (hab : c < a + b) : ∀ v, 1 ≤ v → ∃ r, v ≤ r ∧ Reach [⟨a,b,c⟩] [v] (List.replicate r 1) := by
+  intro v
+  induction v using Nat.strongRecOn with
+  | ind v ih =>
+    intro hv1
+    by_cases hvc : v = c
+    · rw [hvc]
+      obtain ⟨ra, hra1, hrar⟩ := ih a (by omega) (by omega)
+      obtain ⟨rb, hrb1, hrbr⟩ := ih b (by omega) (by omega)
+      refine ⟨ra + rb, by omega, ?_⟩
+      have hfs : Reach [⟨a,b,c⟩] [c] [a, b] := by
+        have hm := reach_move [] (Local.fsplit ⟨a,b,c⟩ (List.mem_singleton.2 rfl))
+          (List.Perm.refl _) (Reach.refl _); simpa using hm
+      have st1 : Reach [⟨a,b,c⟩] [a, b] (List.replicate ra 1 ++ [b]) := by
+        have := reach_frame [b] hrar; simpa using this
+      have st2 : Reach [⟨a,b,c⟩] (List.replicate ra 1 ++ [b])
+          (List.replicate ra 1 ++ List.replicate rb 1) := by
+        have := reach_frame_left (List.replicate ra 1) hrbr; simpa using this
+      rw [replicate_one_add] at st2
+      exact reach_trans hfs (reach_trans st1 st2)
+    · by_cases hv2 : 2 ≤ v
+      · obtain ⟨r1, hr11, hr1r⟩ := ih (v / 2) (by omega) (by omega)
+        obtain ⟨r2, hr21, hr2r⟩ := ih ((v + 1) / 2) (by omega) (by omega)
+        refine ⟨r1 + r2, by omega, ?_⟩
+        have hns : Reach [⟨a,b,c⟩] [v] [v / 2, (v + 1) / 2] :=
+          reach_move [] (Local.nsplit v (by omega)
+            (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+        have st1 : Reach [⟨a,b,c⟩] [v / 2, (v + 1) / 2] (List.replicate r1 1 ++ [(v + 1) / 2]) := by
+          have := reach_frame [(v + 1) / 2] hr1r; simpa using this
+        have st2 : Reach [⟨a,b,c⟩] (List.replicate r1 1 ++ [(v + 1) / 2])
+            (List.replicate r1 1 ++ List.replicate r2 1) := by
+          have := reach_frame_left (List.replicate r1 1) hr2r; simpa using this
+        rw [replicate_one_add] at st2
+        exact reach_trans hns (reach_trans st1 st2)
+      · refine ⟨1, by omega, ?_⟩
+        have : v = 1 := by omega
+        rw [this]; exact Reach.refl _
+
+/-- Raise a pile of ones by `g` (`d>0`): build a `c`, false-split it, scatter the
+    legs back.  `1^K → 1^(K+g)` for `K ≥ c`. -/
+theorem gainGpos (a b c : Nat) (ha2 : 2 ≤ a) (hb2 : 2 ≤ b) (hac : a < c) (hbc : b < c)
+    (hab : c < a + b) :
+    ∀ K, c ≤ K → Reach [⟨a,b,c⟩] (List.replicate K 1) (List.replicate (K + (a + b - c)) 1) := by
+  intro K hK
+  have gC : Reach [⟨a,b,c⟩] (List.replicate c 1) [c] := gatherBig a b c ha2 hb2 c (by omega)
+  have hsplitrep : List.replicate K (1:Nat) = List.replicate c 1 ++ List.replicate (K - c) 1 := by
+    rw [replicate_one_add]; congr 1; omega
+  have s1 : Reach [⟨a,b,c⟩] (List.replicate K 1) (c :: List.replicate (K - c) 1) := by
+    rw [hsplitrep]; have := reach_frame (List.replicate (K - c) 1) gC; simpa using this
+  have s2 : Reach [⟨a,b,c⟩] (c :: List.replicate (K - c) 1) (a :: b :: List.replicate (K - c) 1) := by
+    have hm2 := reach_move (List.replicate (K - c) 1)
+      (Local.fsplit ⟨a,b,c⟩ (List.mem_singleton.2 rfl)) (List.Perm.refl _) (Reach.refl _)
+    simpa using hm2
+  have sca : Reach [⟨a,b,c⟩] [a] (List.replicate a 1) := scatterClean a b c a (by omega) (by omega)
+  have scb : Reach [⟨a,b,c⟩] [b] (List.replicate b 1) := scatterClean a b c b (by omega) (by omega)
+  have s3 : Reach [⟨a,b,c⟩] (a :: b :: List.replicate (K - c) 1)
+      (List.replicate a 1 ++ (b :: List.replicate (K - c) 1)) := by
+    have := reach_frame (b :: List.replicate (K - c) 1) sca; simpa using this
+  have s4 : Reach [⟨a,b,c⟩] (List.replicate a 1 ++ (b :: List.replicate (K - c) 1))
+      (List.replicate a 1 ++ (List.replicate b 1 ++ List.replicate (K - c) 1)) := by
+    have := reach_frame_left (List.replicate a 1) (reach_frame (List.replicate (K - c) 1) scb)
+    simpa using this
+  have ecat : List.replicate a (1:Nat) ++ (List.replicate b 1 ++ List.replicate (K - c) 1)
+      = List.replicate (K + (a + b - c)) 1 := by
+    rw [replicate_one_add, replicate_one_add]; congr 1; omega
+  rw [ecat] at s4
+  exact reach_trans s1 (reach_trans s2 (reach_trans s3 s4))
+
+/-- Walk a one-pile UP by `k·g`. -/
+theorem onesUpK (a b c : Nat) (ha2 : 2 ≤ a) (hb2 : 2 ≤ b) (hac : a < c) (hbc : b < c)
+    (hab : c < a + b) :
+    ∀ k K, c ≤ K → Reach [⟨a,b,c⟩] (List.replicate K 1) (List.replicate (K + k * (a + b - c)) 1) := by
+  intro k
+  induction k with
+  | zero => intro K hK; rw [Nat.zero_mul, Nat.add_zero]; exact Reach.refl _
+  | succ k ih =>
+    intro K hK
+    have step := gainGpos a b c ha2 hb2 hac hbc hab K hK
+    have hrec := ih (K + (a + b - c)) (by omega)
+    rw [Nat.succ_mul]
+    rw [show K + (a + b - c) + k * (a + b - c) = K + (k * (a + b - c) + (a + b - c)) from by omega] at hrec
+    exact reach_trans step hrec
+
+/-- Walk a one-pile DOWN by `k·g` (staying `≥ a+b+1`). -/
+theorem onesDownK (a b c : Nat) (ha2 : 2 ≤ a) (hb2 : 2 ≤ b) (hac : a < c) (hbc : b < c)
+    (hab : c < a + b) :
+    ∀ k K, a + b + 1 + k * (a + b - c) ≤ K →
+      Reach [⟨a,b,c⟩] (List.replicate K 1) (List.replicate (K - k * (a + b - c)) 1) := by
+  intro k
+  induction k with
+  | zero => intro K hK; rw [Nat.zero_mul, Nat.sub_zero]; exact Reach.refl _
+  | succ k ih =>
+    intro K hK
+    have hsm : (k + 1) * (a + b - c) = k * (a + b - c) + (a + b - c) := Nat.succ_mul k (a + b - c)
+    have step := loseGpos a b c ha2 hb2 hac hbc hab K (by omega)
+    have hrec := ih (K - (a + b - c)) (by omega)
+    rw [Nat.succ_mul]
+    rw [show K - (a + b - c) - k * (a + b - c) = K - (k * (a + b - c) + (a + b - c)) from by omega] at hrec
+    exact reach_trans step hrec
+
+/-- **Full unconditional sufficiency for `a + b > c` with legs in `[2, c)`** — the
+    entire family, *no* single-cluster restriction (so `4+4=5`, `5+5=7`, … are now
+    covered).  Route through the all-ones hub: scatter `[s]` to `1^r`, walk the pile
+    to `1^t` in steps of `g`, rebuild `[t]`. -/
+theorem single_sufficiency_dpos_full (a b c : Nat) (ha2 : 2 ≤ a) (hb2 : 2 ≤ b)
+    (hac : a < c) (hbc : b < c) (hab : c < a + b) :
+    ∀ s t, Mval [⟨a,b,c⟩] ≤ s → Mval [⟨a,b,c⟩] ≤ t →
+      gz [⟨a,b,c⟩] ∣ ((t : Int) - s) → Reach [⟨a,b,c⟩] [s] [t] := by
+  intro s t hs ht hg
+  have hH : Hnat [⟨a,b,c⟩] = a + b := Hnat_dpos a b c hab
+  have hMv : Mval [⟨a,b,c⟩] = a + b + 1 := by show Hnat [⟨a,b,c⟩] + 1 = a + b + 1; rw [hH]
+  have hgz : gz [⟨a,b,c⟩] = ((a + b - c : Nat) : Int) := by
+    show ((gnat [⟨a,b,c⟩] : Nat) : Int) = _; rw [gnat_dpos a b c hab]
+  have hs' : a + b + 1 ≤ s := by omega
+  have ht' : a + b + 1 ≤ t := by omega
+  obtain ⟨r, hsr, hreach⟩ := scatterRaw_dpos a b c (by omega) (by omega) hac hbc hab s (by omega)
+  have hr' : a + b + 1 ≤ r := by omega
+  -- residue of the scatter: g ∣ (r − s)
+  have hrs : gz [⟨a,b,c⟩] ∣ ((r : Int) - s) := by
+    have hd := reach_dvd hreach
+    rwa [total_replicate_one, show total [s] = s from by simp] at hd
+  -- hence g ∣ (t − r)
+  obtain ⟨p, hp⟩ := hg
+  obtain ⟨q, hq⟩ := hrs
+  have htr : gz [⟨a,b,c⟩] ∣ ((t : Int) - r) := ⟨p - q, by rw [Int.mul_sub, ← hp, ← hq]; omega⟩
+  -- walk the one-pile from r to t
+  have hpile : Reach [⟨a,b,c⟩] (List.replicate r 1) (List.replicate t 1) := by
+    rcases Nat.le_total r t with hle | hge
+    · have hnd : (a + b - c) ∣ (t - r) := by
+        have h1 : ((a + b - c : Nat) : Int) ∣ ((t - r : Nat) : Int) := by
+          rw [Int.natCast_sub hle, ← hgz]; exact htr
+        exact Int.natCast_dvd_natCast.mp h1
+      obtain ⟨k, hk⟩ := hnd
+      have hu := onesUpK a b c ha2 hb2 hac hbc hab k r (by omega)
+      rwa [show r + k * (a + b - c) = t from by rw [Nat.mul_comm]; omega] at hu
+    · have hnd : (a + b - c) ∣ (r - t) := by
+        have h2 : ((a + b - c : Nat) : Int) ∣ ((r : Int) - t) := by
+          have hneg := dvd_neg' htr
+          rw [show -((t:Int) - r) = (r:Int) - t from by omega] at hneg
+          rwa [hgz] at hneg
+        have h3 : ((a + b - c : Nat) : Int) ∣ ((r - t : Nat) : Int) := by
+          rw [Int.natCast_sub hge]; exact h2
+        exact Int.natCast_dvd_natCast.mp h3
+      obtain ⟨k, hk⟩ := hnd
+      have hd := onesDownK a b c ha2 hb2 hac hbc hab k r (by rw [Nat.mul_comm]; omega)
+      rwa [show r - k * (a + b - c) = t from by rw [Nat.mul_comm]; omega] at hd
+  exact reach_trans hreach (reach_trans hpile (gatherBig a b c ha2 hb2 t (by omega)))
+
+/-- The lie `4 + 4 = 5` — a genuinely **multi-cluster** instance (both `2c=10` and
+    `4c=20` sit in the descend range) — is completely solvable above `M = 9`. -/
+theorem solvable_4_4_5 {s t : Nat} (hs : 9 ≤ s) (ht : 9 ≤ t)
+    (h : (3:Int) ∣ ((t:Int) - s)) : Reach [⟨4,4,5⟩] [s] [t] :=
+  single_sufficiency_dpos_full 4 4 5 (by decide) (by decide) (by decide) (by decide) (by decide)
+    s t hs ht (by have : gz [⟨4,4,5⟩] = 3 := by decide
+                  rw [this]; exact h)
+
+#print axioms YaStupid.scatterRaw_dpos
+#print axioms YaStupid.single_sufficiency_dpos_full
+#print axioms YaStupid.solvable_4_4_5
+
+end YaStupid
+
 #print axioms YaStupid.gatherMin1
 #print axioms YaStupid.loseGmin1
 #print axioms YaStupid.baseD_dneg_min1
