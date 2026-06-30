@@ -3852,3 +3852,201 @@ theorem single_sufficiency_1147_via_hub :
 #print axioms YaStupid.single_sufficiency_1147_via_hub
 
 end YaStupid
+
+
+namespace YaStupid
+
+/-! ### Closing the `a = 1` clean-scatter family `⟨1,b,c⟩`, `c < b ≤ 2c−2`
+
+`legGE` already covers `a+b>c`, leg-`≥c` configs whose legs scatter *exactly* — but
+only for `2 ≤ a`.  This section closes the `a = 1` version uniformly: every
+`⟨1,b,c⟩` with `3 ≤ c < b ≤ 2c−2`.  The bound `b ≤ 2c−2` makes `b` halve strictly
+below `c`, so it scatters cleanly (no config-specific escape), and the only new
+ingredient is an `a=1` builder that dodges the false merge `{1,b}` (blocked solely at
+`v = b+1`).  Everything then plugs into `sufficiency_from_hub`. -/
+
+/-- Peel one `1` off the front of a nonempty ones-pile (clean, no nested subtraction). -/
+theorem repl_pull : ∀ p, 1 ≤ p → List.replicate p (1:Nat) = 1 :: List.replicate (p - 1) 1 := by
+  intro p hp
+  cases p with
+  | zero => omega
+  | succ n => simp [List.replicate_succ]
+
+/-- Build any `[v]` from `v` ones in `⟨1,b,c⟩`, dodging `{1,b}` (only `v=b+1` is
+    blocked → built as `[b-1]+[2]`). -/
+theorem buildDodge1bc (b c : Nat) (hc3 : 3 ≤ c) (hcb : c < b) :
+    ∀ v, 1 ≤ v → Reach [⟨1,b,c⟩] (List.replicate v 1) [v] := by
+  intro v
+  induction v using Nat.strongRecOn with
+  | ind v ih =>
+    intro hv
+    by_cases hvb : v ≤ b
+    · exact gather 1 b c v (by omega) (by omega)
+    · by_cases hv1 : v = b + 1
+      · subst hv1
+        have key : List.replicate (b + 1) (1:Nat) = List.replicate (b - 1) 1 ++ List.replicate 2 1 := by
+          rw [replicate_one_add]; congr 1; omega
+        have bb1 : Reach [⟨1,b,c⟩] (List.replicate (b - 1) 1) [b - 1] := gather 1 b c (b - 1) (by omega) (by omega)
+        have b2 : Reach [⟨1,b,c⟩] (List.replicate 2 1) [2] := gather 1 b c 2 (by omega) (by omega)
+        have s1 : Reach [⟨1,b,c⟩] (List.replicate (b + 1) 1) ([b - 1] ++ List.replicate 2 1) := by
+          rw [key]; have := reach_frame (List.replicate 2 1) bb1; simpa using this
+        have s2 : Reach [⟨1,b,c⟩] ([b - 1] ++ List.replicate 2 1) [b - 1, 2] := by
+          have := reach_frame_left [b - 1] b2; simpa using this
+        have s3 : Reach [⟨1,b,c⟩] [b - 1, 2] [b + 1] := by
+          have hcc : ∀ f ∈ ([⟨1,b,c⟩] : Config), ¬ ((f.a = b - 1 ∧ f.b = 2) ∨ (f.a = 2 ∧ f.b = b - 1)) := by
+            simp only [List.mem_singleton, forall_eq]; omega
+          have hm := reach_move [] (Local.nmerge (b - 1) 2 hcc) (List.Perm.refl _) (Reach.refl _)
+          rw [show (b - 1) + 2 = b + 1 from by omega] at hm
+          exact hm
+        exact reach_trans s1 (reach_trans s2 s3)
+      · have hrec := ih (v - 1) (by omega) (by omega)
+        have key : List.replicate v (1:Nat) = List.replicate 1 1 ++ List.replicate (v - 1) 1 := by
+          rw [replicate_one_add]; congr 1; omega
+        have s1 : Reach [⟨1,b,c⟩] (List.replicate v 1) [1, v - 1] := by
+          rw [key]; have := reach_frame_left (List.replicate 1 1) hrec; simpa using this
+        have s2 : Reach [⟨1,b,c⟩] [1, v - 1] [v] := by
+          have hcc : ∀ f ∈ ([⟨1,b,c⟩] : Config), ¬ ((f.a = 1 ∧ f.b = v - 1) ∨ (f.a = v - 1 ∧ f.b = 1)) := by
+            simp only [List.mem_singleton, forall_eq]; omega
+          have hm := reach_move [] (Local.nmerge 1 (v - 1) hcc) (List.Perm.refl _) (Reach.refl _)
+          rw [show 1 + (v - 1) = v from by omega] at hm
+          exact hm
+        exact reach_trans s1 s2
+
+/-- Scatter the leg `b` (`≤ 2c−2`, so halves `< c`) to `1^b`, cleanly. -/
+theorem scatterLeg1bc (b c : Nat) (hc3 : 3 ≤ c) (hcb : c < b) (hb2c : b ≤ 2 * c - 2) :
+    Reach [⟨1,b,c⟩] [b] (List.replicate b 1) := by
+  have hns : Reach [⟨1,b,c⟩] [b] [b / 2, (b + 1) / 2] :=
+    reach_move [] (Local.nsplit b (by omega)
+      (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+  have s1 : Reach [⟨1,b,c⟩] [b / 2, (b + 1) / 2] (List.replicate (b / 2) 1 ++ [(b + 1) / 2]) := by
+    have := reach_frame [(b + 1) / 2] (scatterClean 1 b c (b / 2) (by omega) (by omega)); simpa using this
+  have s2 : Reach [⟨1,b,c⟩] (List.replicate (b / 2) 1 ++ [(b + 1) / 2])
+      (List.replicate (b / 2) 1 ++ List.replicate ((b + 1) / 2) 1) := by
+    have := reach_frame_left (List.replicate (b / 2) 1) (scatterClean 1 b c ((b + 1) / 2) (by omega) (by omega))
+    simpa using this
+  rw [replicate_one_add, show b / 2 + (b + 1) / 2 = b from by omega] at s2
+  exact reach_trans hns (reach_trans s1 s2)
+
+/-- Scatter any `[v]` to some ones-pile in `⟨1,b,c⟩` (clean — `v=c` fsplits to
+    `{1,b}` and `b` scatters; no escape needed since `b ≤ 2c−2`). -/
+theorem scat1bc (b c : Nat) (hc3 : 3 ≤ c) (hcb : c < b) (hb2c : b ≤ 2 * c - 2) :
+    ∀ v, 1 ≤ v → ∃ r, v ≤ r ∧ Reach [⟨1,b,c⟩] [v] (List.replicate r 1) := by
+  intro v
+  induction v using Nat.strongRecOn with
+  | ind v ih =>
+    intro hv
+    by_cases hvc : v = c
+    · refine ⟨1 + b, by omega, ?_⟩
+      rw [hvc]
+      have hfs : Reach [⟨1,b,c⟩] [c] [1, b] := by
+        have hm := reach_move [] (Local.fsplit ⟨1,b,c⟩ (List.mem_singleton.2 rfl)) (List.Perm.refl _) (Reach.refl _)
+        simpa using hm
+      have s3 : Reach [⟨1,b,c⟩] [1, b] (1 :: List.replicate b 1) := by
+        have := reach_frame_left [1] (scatterLeg1bc b c hc3 hcb hb2c); simpa using this
+      have e : (1:Nat) :: List.replicate b 1 = List.replicate (1 + b) 1 := by
+        rw [← List.replicate_succ]; congr 1; omega
+      rw [e] at s3
+      exact reach_trans hfs s3
+    · by_cases hlt : v < c
+      · exact ⟨v, by omega, scatterClean 1 b c v (by omega) hlt⟩
+      · obtain ⟨r1, hr11, hr1r⟩ := ih (v / 2) (by omega) (by omega)
+        obtain ⟨r2, hr21, hr2r⟩ := ih ((v + 1) / 2) (by omega) (by omega)
+        refine ⟨r1 + r2, by omega, ?_⟩
+        have hns : Reach [⟨1,b,c⟩] [v] [v / 2, (v + 1) / 2] :=
+          reach_move [] (Local.nsplit v (by omega)
+            (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+        have st1 : Reach [⟨1,b,c⟩] [v / 2, (v + 1) / 2] (List.replicate r1 1 ++ [(v + 1) / 2]) := by
+          have := reach_frame [(v + 1) / 2] hr1r; simpa using this
+        have st2 : Reach [⟨1,b,c⟩] (List.replicate r1 1 ++ [(v + 1) / 2])
+            (List.replicate r1 1 ++ List.replicate r2 1) := by
+          have := reach_frame_left (List.replicate r1 1) hr2r; simpa using this
+        rw [replicate_one_add] at st2
+        exact reach_trans hns (reach_trans st1 st2)
+
+/-- Unlock a locked `c` with `K ≥ 1` spare ones: `c :: 1^K → 1^(c+K)`
+    (`{c,1}→c+1` is normal since `c ≠ b`; then scatter `c+1 ≤ 2c-2`). -/
+theorem unlock1bc (b c : Nat) (hc3 : 3 ≤ c) (hcb : c < b) :
+    ∀ K, 1 ≤ K → Reach [⟨1,b,c⟩] (c :: List.replicate K 1) (List.replicate (c + K) 1) := by
+  intro K hK
+  have hrK : List.replicate K (1:Nat) = 1 :: List.replicate (K - 1) 1 := repl_pull K hK
+  have hcc : ∀ f ∈ ([⟨1,b,c⟩] : Config), ¬ ((f.a = c ∧ f.b = 1) ∨ (f.a = 1 ∧ f.b = c)) := by
+    simp only [List.mem_singleton, forall_eq]; omega
+  have s1 : Reach [⟨1,b,c⟩] (c :: List.replicate K 1) ((c + 1) :: List.replicate (K - 1) 1) := by
+    rw [hrK]
+    have hm := reach_move (List.replicate (K - 1) 1) (Local.nmerge c 1 hcc) (List.Perm.refl _) (Reach.refl _)
+    simpa using hm
+  have gu : Reach [⟨1,b,c⟩] [c + 1] (List.replicate (c + 1) 1) := getUnits 1 b c (c + 1) (by omega) (by omega)
+  have s2 : Reach [⟨1,b,c⟩] ((c + 1) :: List.replicate (K - 1) 1)
+      (List.replicate (c + 1) 1 ++ List.replicate (K - 1) 1) := by
+    have := reach_frame (List.replicate (K - 1) 1) gu; simpa using this
+  have ecat : List.replicate (c + 1) (1:Nat) ++ List.replicate (K - 1) 1 = List.replicate (c + K) 1 := by
+    rw [replicate_one_add]; congr 1; omega
+  rw [ecat] at s2
+  exact reach_trans s1 s2
+
+/-- Drop `g` from a ones-pile: gather a `b`, false-merge `{1,b}→c`, unlock the `c`. -/
+theorem losG1bc (b c : Nat) (hc3 : 3 ≤ c) (hcb : c < b) (hb2c : b ≤ 2 * c - 2) :
+    ∀ K, 1 + b + 1 ≤ K → Reach [⟨1,b,c⟩] (List.replicate K 1) (List.replicate (K - (1 + b - c)) 1) := by
+  intro K hK
+  have gb : Reach [⟨1,b,c⟩] (List.replicate K 1) (b :: List.replicate (K - b) 1) :=
+    gatherPrefix 1 b c b K (by omega) (by omega) (by omega)
+  have hrK : List.replicate (K - b) (1:Nat) = 1 :: List.replicate (K - b - 1) 1 := repl_pull (K - b) (by omega)
+  have hfm : Reach [⟨1,b,c⟩] (b :: List.replicate (K - b) 1) (c :: List.replicate (K - b - 1) 1) := by
+    rw [hrK]
+    have hm := reach_move' (List.replicate (K - b - 1) 1) (Local.fmerge ⟨1,b,c⟩ (List.mem_singleton.2 rfl))
+      (List.Perm.swap 1 b (List.replicate (K - b - 1) 1)) (List.Perm.refl _) (Reach.refl _)
+    simpa using hm
+  have hun := unlock1bc b c hc3 hcb (K - b - 1) (by omega)
+  rw [show c + (K - b - 1) = K - (1 + b - c) from by omega] at hun
+  exact reach_trans gb (reach_trans hfm hun)
+
+/-- Gain `g` to a ones-pile: build a `c`, false-split `c→{1,b}`, scatter the `b`. -/
+theorem ganG1bc (b c : Nat) (hc3 : 3 ≤ c) (hcb : c < b) (hb2c : b ≤ 2 * c - 2) :
+    ∀ K, 1 + b + 1 ≤ K → Reach [⟨1,b,c⟩] (List.replicate K 1) (List.replicate (K + (1 + b - c)) 1) := by
+  intro K hK
+  have gc : Reach [⟨1,b,c⟩] (List.replicate K 1) (c :: List.replicate (K - c) 1) :=
+    gatherPrefix 1 b c c K (by omega) (by omega) (by omega)
+  have hfs : Reach [⟨1,b,c⟩] (c :: List.replicate (K - c) 1) (1 :: b :: List.replicate (K - c) 1) := by
+    have hm := reach_move (List.replicate (K - c) 1) (Local.fsplit ⟨1,b,c⟩ (List.mem_singleton.2 rfl))
+      (List.Perm.refl _) (Reach.refl _)
+    simpa using hm
+  have s3 : Reach [⟨1,b,c⟩] (1 :: b :: List.replicate (K - c) 1)
+      (1 :: (List.replicate b 1 ++ List.replicate (K - c) 1)) := by
+    have := reach_frame_left [1] (reach_frame (List.replicate (K - c) 1) (scatterLeg1bc b c hc3 hcb hb2c))
+    simpa using this
+  have ecat : (1:Nat) :: (List.replicate b 1 ++ List.replicate (K - c) 1) = List.replicate (K + (1 + b - c)) 1 := by
+    rw [replicate_one_add, show (1:Nat) :: List.replicate (b + (K - c)) 1
+          = List.replicate (1 + (b + (K - c))) 1 from by rw [← List.replicate_succ]; congr 1; omega]
+    congr 1; omega
+  rw [ecat] at s3
+  exact reach_trans gc (reach_trans hfs s3)
+
+/-- **Full sufficiency for the `a=1` clean-scatter family `⟨1,b,c⟩`, `3 ≤ c < b ≤ 2c−2`.**
+    Closes the `a=1` configs `legGE` excluded.  Every `s,t ≥ M = b+2` with
+    `(1+b-c) ∣ (t−s)` are interreachable. -/
+theorem single_sufficiency_1bc (b c : Nat) (hc3 : 3 ≤ c) (hcb : c < b) (hb2c : b ≤ 2 * c - 2) :
+    ∀ s t, Mval [⟨1,b,c⟩] ≤ s → Mval [⟨1,b,c⟩] ≤ t →
+      gz [⟨1,b,c⟩] ∣ ((t : Int) - s) → Reach [⟨1,b,c⟩] [s] [t] :=
+  sufficiency_from_hub 1 b c (by omega)
+    (buildDodge1bc b c hc3 hcb)
+    (fun K hK => losG1bc b c hc3 hcb hb2c K (by omega))
+    (fun K hK => ⟨1, by omega, by
+      rw [show K + 1 * (1 + b - c) = K + (1 + b - c) from by omega]
+      exact ganG1bc b c hc3 hcb hb2c K (by omega)⟩)
+    (scat1bc b c hc3 hcb hb2c)
+
+/-- The lie `1 + 12 = 7` is completely solvable above `M = 14`. -/
+theorem solvable_1_12_7 {s t : Nat} (hs : 14 ≤ s) (ht : 14 ≤ t)
+    (h : (6:Int) ∣ ((t:Int) - s)) : Reach [⟨1,12,7⟩] [s] [t] := by
+  refine single_sufficiency_1bc 12 7 (by omega) (by omega) (by omega) s t ?_ ?_ ?_
+  · have : Mval [⟨1,12,7⟩] = 14 := by decide
+    omega
+  · have : Mval [⟨1,12,7⟩] = 14 := by decide
+    omega
+  · have : gz [⟨1,12,7⟩] = 6 := by decide
+    rw [this]; exact h
+
+#print axioms YaStupid.single_sufficiency_1bc
+#print axioms YaStupid.solvable_1_12_7
+
+end YaStupid
