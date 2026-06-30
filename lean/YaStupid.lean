@@ -5917,3 +5917,155 @@ theorem solvable_3_5_2 {s t : Nat} (hs : 9 ≤ s) (ht : 9 ≤ t)
 #print axioms YaStupid.solvable_3_5_2
 
 end YaStupid
+
+
+namespace YaStupid
+
+/-! ### `c = 2`, one odd + one even leg: `single_sufficiency_c2_odd_even`
+
+The even leg is built from `2`s; the odd leg `b = 3 + 2f` from a `[3]` seed plus `f`
+`2`s.  The seed comes from a **gadget** `[2,2,2] → [6] → [3,3] → [1,2,3]` that also
+yields a spare `1` and `2`; both are merged harmlessly into the leftover (legal since
+`1, 2 ∉ {a,b}` for legs `≥ 3`).  No `1`-shortage and no edge cases: odd values are
+reached purely by splitting even balls. -/
+
+/-- `[2,2,2] → [1,2,3]`: gather to `[6]`, split to `[3,3]`, split one `3` to `[1,2]`. -/
+theorem gadget123 (a b : Nat) (ha3 : 3 ≤ a) (hb3 : 3 ≤ b) :
+    Reach [⟨a,b,2⟩] (List.replicate 3 2) [1, 2, 3] := by
+  have hgs : ∀ k, 1 ≤ k → k < 3 → ¬ ((a = 2 ∧ b = k*2) ∨ (a = k*2 ∧ b = 2)) := by
+    intro k _ _; omega
+  have g6 : Reach [⟨a,b,2⟩] (List.replicate 3 2) [3 * 2] := gatherCvalG a b 2 3 (by omega) hgs
+  have s1 : Reach [⟨a,b,2⟩] [3 * 2] [3, 3] :=
+    reach_move [] (Local.nsplit (3*2) (by omega) (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+  have s2 : Reach [⟨a,b,2⟩] [3, 3] [1, 2, 3] :=
+    reach_frame [3] (reach_move [] (Local.nsplit 3 (by omega) (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _))
+  exact reach_trans g6 (reach_trans s1 s2)
+
+/-- `replicate (3+f) 2 → [1, 2, b]` with `b = 3 + 2f`: gadget seed `[3]` then bridge. -/
+theorem buildOddLeg (a b f : Nat) (ha3 : 3 ≤ a) (hb3 : 3 ≤ b) (hbf : b = 3 + 2*f) :
+    Reach [⟨a,b,2⟩] (List.replicate (3 + f) 2) [1, 2, b] := by
+  have esplit : List.replicate (3 + f) 2 = List.replicate 3 2 ++ List.replicate f 2 := by
+    rw [repl_add]
+  rw [esplit]
+  have hg : Reach [⟨a,b,2⟩] (List.replicate 3 2 ++ List.replicate f 2) ([1,2,3] ++ List.replicate f 2) :=
+    reach_frame _ (gadget123 a b ha3 hb3)
+  have hbridge : Reach [⟨a,b,2⟩] (3 :: List.replicate f 2) [b] := by
+    have := mergeTwos a b ha3 hb3 f 3; rwa [show 3 + 2 * f = b from by omega] at this
+  have hb2 : Reach [⟨a,b,2⟩] ([1,2,3] ++ List.replicate f 2) [1, 2, b] := by
+    have := reach_frame_left [1, 2] hbridge; simpa using this
+  exact reach_trans hg hb2
+
+/-- Descend for one-odd-one-even `⟨a,b,2⟩` with `a = 2·ap` (even, `≥4`), `b = 3+2f`
+    (odd, `≥3`): `[n+(a+b-2)] → [n]`. -/
+theorem descendOddEven2 (a b ap f : Nat) (hap : 2 ≤ ap) (hf : 0 ≤ f)
+    (ha : a = 2 * ap) (hb : b = 3 + 2*f)
+    (hpeel : ∀ v, 3 ≤ v → Reach [⟨a,b,2⟩] [v] [2, v - 2]) :
+    ∀ n, a + b + 1 ≤ n → Reach [⟨a,b,2⟩] [n + (a + b - 2)] [n] := by
+  intro n hn
+  have ha3 : 3 ≤ a := by omega
+  have hb3 : 3 ≤ b := by omega
+  -- peel ap + (3+f) copies of 2
+  have hpe := peelcManyG a b 2 hpeel (ap + (3 + f)) (n + (a + b - 2)) (by omega)
+  rw [show n + (a + b - 2) - (ap + (3 + f)) * 2 = n - 5 from by omega] at hpe
+  have esplit : List.replicate (ap + (3 + f)) 2 ++ [n - 5]
+      = List.replicate ap 2 ++ (List.replicate (3 + f) 2 ++ [n - 5]) := by
+    rw [← repl_add, List.append_assoc]
+  rw [esplit] at hpe
+  -- build [a]
+  have hgs : ∀ k, 1 ≤ k → k < ap → ¬ ((a = 2 ∧ b = k*2) ∨ (a = k*2 ∧ b = 2)) := by
+    intro k _ _; omega
+  have hga : Reach [⟨a,b,2⟩] (List.replicate ap 2) [a] := by
+    have := gatherCvalG a b 2 ap (by omega) hgs; rwa [show ap * 2 = a from by omega] at this
+  have g1 : Reach [⟨a,b,2⟩] (List.replicate ap 2 ++ (List.replicate (3 + f) 2 ++ [n - 5]))
+      ([a] ++ (List.replicate (3 + f) 2 ++ [n - 5])) := reach_frame _ hga
+  -- build odd leg -> [1,2,b]
+  have g2 : Reach [⟨a,b,2⟩] ([a] ++ (List.replicate (3 + f) 2 ++ [n - 5])) [a, 1, 2, b, n - 5] := by
+    have := reach_frame_left [a] (reach_frame [n - 5] (buildOddLeg a b f ha3 hb3 hb)); simpa using this
+  -- merge 1 into n-5 -> n-4
+  have g3 : Reach [⟨a,b,2⟩] [a, 1, 2, b, n - 5] [n - 4, a, 2, b] := by
+    have hcc : ∀ ff ∈ ([⟨a,b,2⟩] : Config), ¬ ((ff.a = 1 ∧ ff.b = n - 5) ∨ (ff.a = n - 5 ∧ ff.b = 1)) := by
+      simp only [List.mem_singleton, forall_eq]; omega
+    have h : Reach [⟨a,b,2⟩] [a, 1, 2, b, n - 5] ([1 + (n - 5)] ++ [a, 2, b]) :=
+      reach_move [a, 2, b] (Local.nmerge 1 (n - 5) hcc)
+        (by rw [List.perm_iff_count]; intro x; simp [List.count_cons] <;> omega) (Reach.refl _)
+    rwa [show 1 + (n - 5) = n - 4 from by omega] at h
+  -- merge 2 into n-4 -> n-2
+  have g4 : Reach [⟨a,b,2⟩] [n - 4, a, 2, b] [n - 2, a, b] := by
+    have hcc : ∀ ff ∈ ([⟨a,b,2⟩] : Config), ¬ ((ff.a = 2 ∧ ff.b = n - 4) ∨ (ff.a = n - 4 ∧ ff.b = 2)) := by
+      simp only [List.mem_singleton, forall_eq]; omega
+    have h : Reach [⟨a,b,2⟩] [n - 4, a, 2, b] ([2 + (n - 4)] ++ [a, b]) :=
+      reach_move [a, b] (Local.nmerge 2 (n - 4) hcc)
+        (by rw [List.perm_iff_count]; intro x; simp [List.count_cons] <;> omega) (Reach.refl _)
+    rwa [show 2 + (n - 4) = n - 2 from by omega] at h
+  -- false-merge {a,b} -> 2
+  have g5 : Reach [⟨a,b,2⟩] [n - 2, a, b] [2, n - 2] := by
+    have h : Reach [⟨a,b,2⟩] [n - 2, a, b] ([2] ++ [n - 2]) :=
+      reach_move [n - 2] (Local.fmerge ⟨a,b,2⟩ (List.mem_singleton.2 rfl))
+        (by rw [List.perm_iff_count]; intro x; simp [List.count_cons] <;> omega) (Reach.refl _)
+    simpa using h
+  -- merge {2, n-2} -> n
+  have g6 : Reach [⟨a,b,2⟩] [2, n - 2] [n] := by
+    have hcc : ∀ ff ∈ ([⟨a,b,2⟩] : Config), ¬ ((ff.a = 2 ∧ ff.b = n - 2) ∨ (ff.a = n - 2 ∧ ff.b = 2)) := by
+      simp only [List.mem_singleton, forall_eq]; omega
+    have h := reach_move [] (Local.nmerge 2 (n - 2) hcc) (List.Perm.refl _) (Reach.refl _)
+    rwa [show 2 + (n - 2) = n from by omega] at h
+  exact reach_trans hpe (reach_trans g1 (reach_trans g2 (reach_trans g3 (reach_trans g4 (reach_trans g5 g6)))))
+
+#print axioms YaStupid.gadget123
+#print axioms YaStupid.buildOddLeg
+#print axioms YaStupid.descendOddEven2
+
+end YaStupid
+
+
+namespace YaStupid
+
+/-- **One-odd-one-even `⟨a,b,2⟩` is solvable** (`a = 2·ap` even `≥4`, `b = 3+2f` odd
+    `≥3`).  E.g. `4+5=2`, `4+7=2`, `6+5=2`. -/
+theorem single_sufficiency_c2_odd_even (a b ap f : Nat) (hap : 2 ≤ ap)
+    (ha : a = 2 * ap) (hb : b = 3 + 2*f) :
+    ∀ s t, Mval [⟨a,b,2⟩] ≤ s → Mval [⟨a,b,2⟩] ≤ t →
+      gz [⟨a,b,2⟩] ∣ ((t : Int) - s) → Reach [⟨a,b,2⟩] [s] [t] := by
+  have ha3 : 3 ≤ a := by omega
+  have hb3 : 3 ≤ b := by omega
+  have hpeel := peelc2 a b ha3 hb3
+  have hg : gnat [⟨a,b,2⟩] = a + b - 2 := gnat_dpos a b 2 (by omega)
+  have hM : Mval [⟨a,b,2⟩] = a + b + 1 := by
+    show Hnat [⟨a,b,2⟩] + 1 = a + b + 1; rw [Hnat_dpos a b 2 (by omega)]
+  have climb : ∀ n, Mval [⟨a,b,2⟩] ≤ n → Reach [⟨a,b,2⟩] [n] [n + gnat [⟨a,b,2⟩]] := by
+    intro n hn; rw [hg, hM] at *; exact climbTrap a b 2 (by omega) (by omega) (by omega) (by omega) hpeel n (by omega)
+  have descend : ∀ n, Mval [⟨a,b,2⟩] ≤ n → Reach [⟨a,b,2⟩] [n + gnat [⟨a,b,2⟩]] [n] := by
+    intro n hn; rw [hg, hM] at *; exact descendOddEven2 a b ap f hap (by omega) ha hb hpeel n (by omega)
+  intro s t hs ht hg'
+  exact sufficiency_of_pumps climb descend hs ht hg'
+
+/-- The lie `4 + 5 = 2` (even+odd legs) is solvable above `M = 10`. -/
+theorem solvable_4_5_2 {s t : Nat} (hs : 10 ≤ s) (ht : 10 ≤ t)
+    (h : (7:Int) ∣ ((t:Int) - s)) : Reach [⟨4,5,2⟩] [s] [t] := by
+  refine single_sufficiency_c2_odd_even 4 5 2 1 (by omega) (by omega) (by omega) s t ?_ ?_ ?_
+  · have : Mval [⟨4,5,2⟩] = 10 := by decide
+    omega
+  · have : Mval [⟨4,5,2⟩] = 10 := by decide
+    omega
+  · have : gz [⟨4,5,2⟩] = 7 := by decide
+    rw [this]; exact h
+
+/-- The lie `3 + 4 = 2` (odd leg first; handled by `reach_swap` to `⟨4,3,2⟩`) is
+    solvable above `M = 8`. -/
+theorem solvable_3_4_2 {s t : Nat} (hs : 8 ≤ s) (ht : 8 ≤ t)
+    (h : (5:Int) ∣ ((t:Int) - s)) : Reach [⟨3,4,2⟩] [s] [t] := by
+  have key : Reach [⟨4,3,2⟩] [s] [t] := by
+    refine single_sufficiency_c2_odd_even 4 3 2 0 (by omega) (by omega) (by omega) s t ?_ ?_ ?_
+    · have : Mval [⟨4,3,2⟩] = 8 := by decide
+      omega
+    · have : Mval [⟨4,3,2⟩] = 8 := by decide
+      omega
+    · have : gz [⟨4,3,2⟩] = 5 := by decide
+      rw [this]; exact h
+  exact reach_swap 4 3 2 key
+
+#print axioms YaStupid.single_sufficiency_c2_odd_even
+#print axioms YaStupid.solvable_4_5_2
+#print axioms YaStupid.solvable_3_4_2
+
+end YaStupid
