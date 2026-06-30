@@ -10,7 +10,7 @@
 /* ----------------------------- rulesets ---------------------------------- */
 const RULESETS = {
   classic:  { name: 'Classic',  falseSums: [{ a: 9, b: 10, c: 21 }] },
-  advanced: { name: 'Advanced', falseSums: [{ a: 9, b: 10, c: 21 }, { a: 2, b: 5, c: 3 }, { a: 1, b: 10, c: 2 }] },
+  advanced: { name: 'Advanced' },
 };
 
 /* ------------------------- arithmetic of the lie -------------------------- */
@@ -83,13 +83,14 @@ function makeBall(value, x, y, vx = 0, vy = 0) {
 function ballById(id) { return balls.find(b => b.id === id); }
 let mode = localStorage.getItem('yastupid_mode') || 'classic';
 
-// Advanced mode's false sums are editable at runtime (add/remove); persisted.
-function loadAdv() {
-  try { const j = JSON.parse(localStorage.getItem('yastupid_adv')); if (Array.isArray(j) && j.length) return j; } catch (_) {}
-  return RULESETS.advanced.falseSums.map(f => ({ ...f }));
+// Advanced mode always starts with two random false equalities; editable at runtime (add/remove).
+function randomSums(n) {
+  const out = [];
+  let guard = 0;
+  while (out.length < n && guard++ < 50) { const f = randomFalseSum(out); if (f) out.push(f); }
+  return out;
 }
-let advancedSums = loadAdv();
-function saveAdv() { localStorage.setItem('yastupid_adv', JSON.stringify(advancedSums)); }
+let advancedSums = randomSums(2);
 function currentSums() { return mode === 'classic' ? RULESETS.classic.falseSums : advancedSums; }
 
 function startLevel(s, t) {
@@ -401,12 +402,12 @@ function addRandomSum() {
   if (advancedSums.length >= 6) return;
   const f = randomFalseSum(advancedSums);
   if (!f) { toast('No fresh false sum found — remove one first.'); return; }
-  advancedSums.push(f); saveAdv();
+  advancedSums.push(f);
   newRandomLevel();            // any change generates a new level
 }
 function removeSum(i) {
   if (advancedSums.length <= 1) return;
-  advancedSums.splice(i, 1); saveAdv();
+  advancedSums.splice(i, 1);
   newRandomLevel();
 }
 function showWin() {
