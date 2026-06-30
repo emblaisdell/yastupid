@@ -274,31 +274,44 @@ re-derives `1+14=7` through it (with `j=2`), confirming the abstraction is faith
 Every remaining `a+b>c`, leg-`≥ c` config now reduces to discharging these four — and
 `scat` is the only genuinely config-specific one.
 
+### The `scatBig` reservoir trick and the families it closes
+
+The hub primitives are now discharged for **broad infinite families** by one device,
+`scatBig`: with a single spare unit, *any* `[v]` scatters to ones using only **normal**
+moves — a locked `c` is bumped `{c,1}→c+1` (normal, since `1 ∉ {a,b}`) and `c+1 ≤ 2c-2`
+scatters (needs `c ≥ 3`). Being total-preserving, it makes the **gain pump exact and
+unconditional** (`ganG_uncond`: build `c` at the reservoir's end, `scatBig` both legs
+left-to-right). So for `2 ≤ a, b`, `c ≥ 3`, `c < a+b`, three of the four primitives are
+free, and **`single_sufficiency_legGE_inexact`** reduces sufficiency to just *"do the
+legs scatter (to some `1^(b+kg)`)?"*. Discharging that bootstrap (the small leg seeds
+the first unit) closes:
+
+- **`⟨1,b,c⟩`, `3 ≤ c < b`** (all `b`, inexact included) — `single_sufficiency_a1`
+  (e.g. `1+10=5`, `1+12=7`); the `a=1` builder dodges `{1,b}`.
+- **`⟨a,b,c⟩`, `2 ≤ a < 2c`, `a ≠ c`, `c ≤ b`** — `single_sufficiency_g` (e.g. `5+5=3`,
+  `2+14=7`), the small leg `< 2c` bootstrapping; the big leg is any size.
+
+Together these cover **every leg-`≥c` config with a leg below `2c`** (`c ≥ 3`).
+
 ## What is *not* (yet) mechanized
 
-The two families we set out to close are **done**: the `a=b=c` trap diagonal
-(`single_sufficiency_kkk`, all `k ≥ 1`, via `peelk`) and the inexact-leg `1+14=7`
-(`single_sufficiency_1147`, via the hub). Two complementary techniques are thus fully
-demonstrated — **non-hub peeling** for traps (no ball reaches ones), and the
-**inexact hub** for scatterers — plus the abstract `sufficiency_from_hub` that any
-config plugs into.
+The remaining open set has shrunk to `a+b>c`, `c ≥ 3` configs where **both legs are
+`≥ 2c`** (so the small-leg bootstrap above doesn't fire), plus `c = 2` configs, plus
+the `a = c` edge. These split into:
+- **scatterers** (e.g. `7+7=3`: `7→[3,4]`, `4 ∈ (c,2c)` bootstraps) — they plug into
+  `single_sufficiency_legGE_inexact` once their legs are scattered, which needs a
+  bootstrap recursion exploring the `⌈·/2⌉` branch;
+- **`c·2^k` traps** (e.g. `6+6=3`, `12+12=3`) — like `a=b=c` scaled: `[M]` reaches *no*
+  ones-pile, so `peelk` (not the hub) is the route, but `peelk` as written is
+  `a=b=c`-specific and the off-diagonal descend is genuinely ad-hoc;
+- **`c = 2`** (e.g. `3+3=2`) — the bump fails (`c+1 = 3` re-splits to include `2`), so
+  even with units `c` can't be cleared.
 
-What remains is the rest of the `a+b>c`, leg-`≥ c` zoo, which is **richer than just
-those two**. BFS shows it splits into:
-- **scatterers** beyond `legGE`'s `2 ≤ a` / exact-leg conditions — `2+14=7`, `1+12=7`
-  (legs reach `1^(b+k·g)`): discharge `scat`/`bld`/`losG`/`ganG` and plug into
-  `sufficiency_from_hub`;
-- **off-diagonal traps** — e.g. `3+3=2`, `4+4=2` bridge yet `[M]` reaches *no*
-  ones-pile, so they are traps like `a=b=c` but *not* on the diagonal; the `peelk`
-  idea (peel the locked `c`, false-split, remerge) generalizes to them but `peelk`
-  as written is `a=b=c`-specific.
-
-Lifting the two techniques to cover this whole zoo uniformly is the outstanding work.
-It is a construction gap, not a math gap: an exhaustive search
+This is a construction gap, not a math gap: an exhaustive search
 ([`../test/counterexample-search.js`](../test/counterexample-search.js)) checks both
-pumps for `1+1=c` (`c = 3..9`) and every `a+b>c` with a leg `≥ c` (`2+10=7`,
-`2+2=2`, `1+14=7`, `3+3=2`, …) and finds **no counterexample anywhere** — `M = H+1`
-holds universally.
+pumps for `1+1=c` (`c = 3..9`) and every `a+b>c` with a leg `≥ c` (`2+10=7`, `2+14=7`,
+`2+2=2`, `1+14=7`, `3+3=2`, `7+7=3`, …) and finds **no counterexample anywhere** —
+`M = H+1` holds universally.
 
 Equivalently phrased — the two one-step pumps for an **arbitrary** configuration:
 
