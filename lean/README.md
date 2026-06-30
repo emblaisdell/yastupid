@@ -262,25 +262,43 @@ exactly what the hub needs.
   and **`gainOneG1147`** nets `+g` by gaining `2g` then shedding `g`;
 - then scatter `[s]→1^r`, walk by `g`, rebuild `[t]`.
 
+### The abstract hub — four primitives ⇒ sufficiency (`sufficiency_from_hub`)
+
+`dpos_full`, `legGE`, and `1147` are the same hub argument over different leg
+constructions. **`sufficiency_from_hub`** states it once: for any `a+b>c`, the four
+primitives `bld` (build `[v]` from ones), `losG` (drop `g`), `ganG` (gain *some*
+`j·g`, `j ≥ 1`), `scat` (scatter `[v]` to some ones-pile) give full sufficiency. The
+crux `hub_gainOne` turns one `ganG` (`+j·g`) plus `j−1` leg-free `losG`s into a net
+`+g`, so inexactly-scattering legs are fine. `single_sufficiency_1147_via_hub`
+re-derives `1+14=7` through it (with `j=2`), confirming the abstraction is faithful.
+Every remaining `a+b>c`, leg-`≥ c` config now reduces to discharging these four — and
+`scat` is the only genuinely config-specific one.
+
 ## What is *not* (yet) mechanized
 
-Both families we set out to close are now **done**: the `a=b=c` trap diagonal
-(`single_sufficiency_kkk`, all `k ≥ 1`) and the notorious inexact-leg `1+14=7`
-(`single_sufficiency_1147`). Two complementary techniques are now fully demonstrated:
-the **non-hub `peelk`** route for traps (where no ball reaches ones) and the
-**inexact-leg hub** for configs whose legs scatter to inflated ones-piles `1^(b+k·g)`.
+The two families we set out to close are **done**: the `a=b=c` trap diagonal
+(`single_sufficiency_kkk`, all `k ≥ 1`, via `peelk`) and the inexact-leg `1+14=7`
+(`single_sufficiency_1147`, via the hub). Two complementary techniques are thus fully
+demonstrated — **non-hub peeling** for traps (no ball reaches ones), and the
+**inexact hub** for scatterers — plus the abstract `sufficiency_from_hub` that any
+config plugs into.
 
-What remains is to lift those two demonstrated techniques from their representatives
-to the whole `a+b>c`, leg-`≥ c` zoo uniformly — e.g. inexact legs with `2 ≤ a`
-(`2+14=7`), other locked-`c` traps off the diagonal (`3+3=2`). Each needs its own
-*scatter/escape* construction (the one genuinely config-specific ingredient; the
-builder, the gather, and the `±g` walk are already uniform), so a single theorem for
-the entire family is the remaining work. It is a construction gap, not a math gap: an
-exhaustive search
+What remains is the rest of the `a+b>c`, leg-`≥ c` zoo, which is **richer than just
+those two**. BFS shows it splits into:
+- **scatterers** beyond `legGE`'s `2 ≤ a` / exact-leg conditions — `2+14=7`, `1+12=7`
+  (legs reach `1^(b+k·g)`): discharge `scat`/`bld`/`losG`/`ganG` and plug into
+  `sufficiency_from_hub`;
+- **off-diagonal traps** — e.g. `3+3=2`, `4+4=2` bridge yet `[M]` reaches *no*
+  ones-pile, so they are traps like `a=b=c` but *not* on the diagonal; the `peelk`
+  idea (peel the locked `c`, false-split, remerge) generalizes to them but `peelk`
+  as written is `a=b=c`-specific.
+
+Lifting the two techniques to cover this whole zoo uniformly is the outstanding work.
+It is a construction gap, not a math gap: an exhaustive search
 ([`../test/counterexample-search.js`](../test/counterexample-search.js)) checks both
 pumps for `1+1=c` (`c = 3..9`) and every `a+b>c` with a leg `≥ c` (`2+10=7`,
-`2+2=2`, `1+14=7`, …) and finds **no counterexample anywhere** — `M = H+1` holds
-universally.
+`2+2=2`, `1+14=7`, `3+3=2`, …) and finds **no counterexample anywhere** — `M = H+1`
+holds universally.
 
 Equivalently phrased — the two one-step pumps for an **arbitrary** configuration:
 

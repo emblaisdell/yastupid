@@ -3714,3 +3714,141 @@ theorem solvable_1_14_7 {s t : Nat} (hs : 16 ≤ s) (ht : 16 ≤ t)
 #print axioms YaStupid.solvable_1_14_7
 
 end YaStupid
+
+
+namespace YaStupid
+
+/-! ### The abstract hub: four primitives ⇒ full sufficiency
+
+`single_sufficiency_dpos_full`, `single_sufficiency_legGE`, and
+`single_sufficiency_1147` are the *same* hub argument over different leg-scatter
+constructions.  Here it is once, abstractly.  For any `a+b>c`, given
+  • `bld`  — build any `[v]` from `v` ones;
+  • `losG` — drop `g` from a ones-pile (`1^K → 1^(K-g)`, `K ≥ M`);
+  • `ganG` — gain *some* positive multiple of `g` (`1^K → 1^(K+j·g)`, `j ≥ 1`);
+  • `scat` — scatter any `[v]` to *some* ones-pile,
+full sufficiency follows.  The key move is `hub_gainOne`: a single `ganG` (`+j·g`)
+followed by `j−1` applications of the leg-free `losG` nets exactly `+g`, so a leg
+that only scatters *inexactly* (to `1^(b+k·g)`, as in `1+14=7`) is no obstacle.  Each
+remaining `a+b>c`, leg-`≥ c` config reduces to discharging these four — and `scat` is
+the only genuinely config-specific one (it is exactly what fails on the trap diagonal
+`a=b=c`, which `peelk` handles without the hub). -/
+
+theorem hub_onesDown (a b c : Nat)
+    (losG : ∀ K, a + b + 1 ≤ K →
+      Reach [⟨a,b,c⟩] (List.replicate K 1) (List.replicate (K - (a + b - c)) 1)) :
+    ∀ m K, a + b + 1 + m * (a + b - c) ≤ K →
+      Reach [⟨a,b,c⟩] (List.replicate K 1) (List.replicate (K - m * (a + b - c)) 1) := by
+  intro m
+  induction m with
+  | zero => intro K hK; rw [Nat.zero_mul, Nat.sub_zero]; exact Reach.refl _
+  | succ m ih =>
+    intro K hK
+    have hsm : (m + 1) * (a + b - c) = m * (a + b - c) + (a + b - c) := Nat.succ_mul m (a + b - c)
+    have step := losG K (by omega)
+    have hrec := ih (K - (a + b - c)) (by omega)
+    rw [Nat.succ_mul]
+    rw [show K - (a + b - c) - m * (a + b - c) = K - (m * (a + b - c) + (a + b - c)) from by omega] at hrec
+    exact reach_trans step hrec
+
+theorem hub_gainOne (a b c : Nat)
+    (losG : ∀ K, a + b + 1 ≤ K →
+      Reach [⟨a,b,c⟩] (List.replicate K 1) (List.replicate (K - (a + b - c)) 1))
+    (ganG : ∀ K, a + b + 1 ≤ K →
+      ∃ j, 1 ≤ j ∧ Reach [⟨a,b,c⟩] (List.replicate K 1) (List.replicate (K + j * (a + b - c)) 1)) :
+    ∀ K, a + b + 1 ≤ K →
+      Reach [⟨a,b,c⟩] (List.replicate K 1) (List.replicate (K + (a + b - c)) 1) := by
+  intro K hK
+  obtain ⟨j, hj1, hr⟩ := ganG K hK
+  obtain ⟨j', rfl⟩ : ∃ j', j = j' + 1 := ⟨j - 1, by omega⟩
+  have hjg : (j' + 1) * (a + b - c) = j' * (a + b - c) + (a + b - c) := Nat.succ_mul j' (a + b - c)
+  have hd := hub_onesDown a b c losG j' (K + (j' + 1) * (a + b - c)) (by omega)
+  rw [show K + (j' + 1) * (a + b - c) - j' * (a + b - c) = K + (a + b - c) from by omega] at hd
+  exact reach_trans hr hd
+
+theorem hub_onesUp (a b c : Nat)
+    (losG : ∀ K, a + b + 1 ≤ K →
+      Reach [⟨a,b,c⟩] (List.replicate K 1) (List.replicate (K - (a + b - c)) 1))
+    (ganG : ∀ K, a + b + 1 ≤ K →
+      ∃ j, 1 ≤ j ∧ Reach [⟨a,b,c⟩] (List.replicate K 1) (List.replicate (K + j * (a + b - c)) 1)) :
+    ∀ m K, a + b + 1 ≤ K →
+      Reach [⟨a,b,c⟩] (List.replicate K 1) (List.replicate (K + m * (a + b - c)) 1) := by
+  intro m
+  induction m with
+  | zero => intro K hK; rw [Nat.zero_mul, Nat.add_zero]; exact Reach.refl _
+  | succ m ih =>
+    intro K hK
+    have step := hub_gainOne a b c losG ganG K hK
+    have hrec := ih (K + (a + b - c)) (by omega)
+    rw [Nat.succ_mul]
+    rw [show K + (a + b - c) + m * (a + b - c) = K + (m * (a + b - c) + (a + b - c)) from by omega] at hrec
+    exact reach_trans step hrec
+
+/-- **The abstract inexact-leg hub.**  For any `a + b > c`, the four primitives
+    `bld`, `losG`, `ganG`, `scat` give full sufficiency: every `s, t ≥ M` with
+    `g ∣ (t−s)` are interreachable.  (`ganG` may gain any positive multiple of `g`,
+    so inexactly-scattering legs are fine — `hub_gainOne` sheds the surplus.) -/
+theorem sufficiency_from_hub (a b c : Nat) (hab : c < a + b)
+    (bld : ∀ v, 1 ≤ v → Reach [⟨a,b,c⟩] (List.replicate v 1) [v])
+    (losG : ∀ K, a + b + 1 ≤ K →
+      Reach [⟨a,b,c⟩] (List.replicate K 1) (List.replicate (K - (a + b - c)) 1))
+    (ganG : ∀ K, a + b + 1 ≤ K →
+      ∃ j, 1 ≤ j ∧ Reach [⟨a,b,c⟩] (List.replicate K 1) (List.replicate (K + j * (a + b - c)) 1))
+    (scat : ∀ v, 1 ≤ v → ∃ r, v ≤ r ∧ Reach [⟨a,b,c⟩] [v] (List.replicate r 1)) :
+    ∀ s t, Mval [⟨a,b,c⟩] ≤ s → Mval [⟨a,b,c⟩] ≤ t →
+      gz [⟨a,b,c⟩] ∣ ((t : Int) - s) → Reach [⟨a,b,c⟩] [s] [t] := by
+  have hMv : Mval [⟨a,b,c⟩] = a + b + 1 := by
+    show Hnat [⟨a,b,c⟩] + 1 = a + b + 1; rw [Hnat_dpos a b c hab]
+  have hgz : gz [⟨a,b,c⟩] = ((a + b - c : Nat) : Int) := by
+    show ((gnat [⟨a,b,c⟩] : Nat) : Int) = _; rw [gnat_dpos a b c hab]
+  intro s t hs ht hg
+  have hs' : a + b + 1 ≤ s := by omega
+  have ht' : a + b + 1 ≤ t := by omega
+  obtain ⟨r, hsr, hreach⟩ := scat s (by omega)
+  have hr' : a + b + 1 ≤ r := by omega
+  have hrs : gz [⟨a,b,c⟩] ∣ ((r : Int) - s) := by
+    have hd := reach_dvd hreach
+    rwa [total_replicate_one, show total [s] = s from by simp] at hd
+  obtain ⟨p, hp⟩ := hg
+  obtain ⟨q, hq⟩ := hrs
+  have htr : gz [⟨a,b,c⟩] ∣ ((t : Int) - r) := ⟨p - q, by rw [Int.mul_sub, ← hp, ← hq]; omega⟩
+  have hpile : Reach [⟨a,b,c⟩] (List.replicate r 1) (List.replicate t 1) := by
+    rcases Nat.le_total r t with hle | hge
+    · have hnd : (a + b - c) ∣ (t - r) := by
+        have h1 : ((a + b - c : Nat) : Int) ∣ ((t - r : Nat) : Int) := by
+          rw [Int.natCast_sub hle, ← hgz]; exact htr
+        exact Int.natCast_dvd_natCast.mp h1
+      obtain ⟨m, hm⟩ := hnd
+      have hu := hub_onesUp a b c losG ganG m r (by omega)
+      rwa [show r + m * (a + b - c) = t from by rw [Nat.mul_comm]; omega] at hu
+    · have hnd : (a + b - c) ∣ (r - t) := by
+        have h2 : ((a + b - c : Nat) : Int) ∣ ((r : Int) - t) := by
+          have hneg := dvd_neg' htr
+          rw [show -((t:Int) - r) = (r:Int) - t from by omega] at hneg
+          rwa [hgz] at hneg
+        have h3 : ((a + b - c : Nat) : Int) ∣ ((r - t : Nat) : Int) := by
+          rw [Int.natCast_sub hge]; exact h2
+        exact Int.natCast_dvd_natCast.mp h3
+      obtain ⟨m, hm⟩ := hnd
+      have hd := hub_onesDown a b c losG m r (by rw [Nat.mul_comm]; omega)
+      rwa [show r - m * (a + b - c) = t from by rw [Nat.mul_comm]; omega] at hd
+  exact reach_trans hreach (reach_trans hpile (bld t (by omega)))
+
+/-- `1 + 14 = 7` re-derived through the abstract hub, discharging the four primitives
+    from the `1147` constructions (`ganG` gains `2g` via `gainG1147`, so `j = 2`).
+    Confirms the abstraction is faithful. -/
+theorem single_sufficiency_1147_via_hub :
+    ∀ s t, Mval [⟨1,14,7⟩] ≤ s → Mval [⟨1,14,7⟩] ≤ t →
+      gz [⟨1,14,7⟩] ∣ ((t : Int) - s) → Reach [⟨1,14,7⟩] [s] [t] :=
+  sufficiency_from_hub 1 14 7 (by omega)
+    build1147
+    (fun K hK => loseG1147 K (by omega))
+    (fun K hK => ⟨2, by omega, by
+      have := gainG1147 K (by omega)
+      rwa [show K + 2 * (1 + 14 - 7) = K + 16 from by omega] at this⟩)
+    scatter1147
+
+#print axioms YaStupid.sufficiency_from_hub
+#print axioms YaStupid.single_sufficiency_1147_via_hub
+
+end YaStupid
