@@ -5632,3 +5632,111 @@ theorem solvable_4_8_2 {s t : Nat} (hs : 13 ≤ s) (ht : 13 ≤ t)
 #print axioms YaStupid.solvable_4_8_2
 
 end YaStupid
+
+
+namespace YaStupid
+
+/-! ### A uniform peeler for `c = 2` (both legs `≥ 3`): `peelc2`
+
+For `c = 2` the all-ones field is generally out of reach, and `peelcG`'s recursion
+can hit the forbidden pair when `|a−b| ∈ {2,3}`.  `peelc2` sidesteps this: at the
+recursion step `[v] → [2, v/2−2, (v+1)/2]`, if the merge `{v/2−2, (v+1)/2}` would
+be `{a,b}` (which forces `|a−b| ∈ {2,3}`), peel a `2` off the *other* half too and
+merge the two near-equal residues `{v/2−2, (v+1)/2−2}` (they differ by `≤ 1`, hence
+never `{a,b}` once `|a−b| ≥ 2`), then merge in a `2`.  Legs `≥ 3` keep every
+`{2, ·}` merge clean. -/
+
+/-- Peel a `2` off any `v ≥ 3` in `⟨a,b,2⟩` with both legs `≥ 3`. -/
+theorem peelc2 (a b : Nat) (ha3 : 3 ≤ a) (hb3 : 3 ≤ b) :
+    ∀ v, 3 ≤ v → Reach [⟨a,b,2⟩] [v] [2, v - 2] := by
+  intro v
+  induction v using Nat.strongRecOn with
+  | ind v ih =>
+    intro hv
+    by_cases h3 : v = 3
+    · subst h3
+      refine reach_move' [] (Local.nsplit 3 (by omega) (by simp only [List.mem_singleton, forall_eq]; omega))
+        (List.Perm.refl _) ?_ (Reach.refl _)
+      exact List.Perm.swap 1 2 []
+    · by_cases h4 : v = 4
+      · subst h4
+        have h : Reach [⟨a,b,2⟩] [4] [4/2, (4+1)/2] :=
+          reach_move [] (Local.nsplit 4 (by omega) (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+        simpa using h
+      · by_cases h5 : v = 5
+        · subst h5
+          have h : Reach [⟨a,b,2⟩] [5] [5/2, (5+1)/2] :=
+            reach_move [] (Local.nsplit 5 (by omega) (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+          simpa using h
+        · -- v ≥ 6
+          have hsp : Reach [⟨a,b,2⟩] [v] [v/2, (v+1)/2] :=
+            reach_move [] (Local.nsplit v (by omega) (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+          have hp1 := ih (v/2) (by omega) (by omega)
+          have hfr1 : Reach [⟨a,b,2⟩] [v/2, (v+1)/2] [2, v/2 - 2, (v+1)/2] := by
+            have := reach_frame [(v+1)/2] hp1; simpa using this
+          by_cases hbad : (a = v/2 - 2 ∧ b = (v+1)/2) ∨ (a = (v+1)/2 ∧ b = v/2 - 2)
+          · -- alternate route: peel 2 off the other half too
+            have hp2 := ih ((v+1)/2) (by omega) (by omega)
+            have hfr2 : Reach [⟨a,b,2⟩] [2, v/2 - 2, (v+1)/2] [2, v/2 - 2, 2, (v+1)/2 - 2] := by
+              have := reach_frame_left [2, v/2 - 2] hp2; simpa using this
+            have hmid : Reach [⟨a,b,2⟩] [2, v/2 - 2, 2, (v+1)/2 - 2] [v - 4, 2, 2] := by
+              have hcc : ∀ f ∈ ([⟨a,b,2⟩] : Config),
+                  ¬ ((f.a = v/2 - 2 ∧ f.b = (v+1)/2 - 2) ∨ (f.a = (v+1)/2 - 2 ∧ f.b = v/2 - 2)) := by
+                rcases hbad with ⟨e1,e2⟩ | ⟨e1,e2⟩ <;> (simp only [List.mem_singleton, forall_eq]; omega)
+              have h : Reach [⟨a,b,2⟩] [2, v/2 - 2, 2, (v+1)/2 - 2] ([(v/2 - 2) + ((v+1)/2 - 2)] ++ [2,2]) :=
+                reach_move [2,2] (Local.nmerge (v/2 - 2) ((v+1)/2 - 2) hcc)
+                  (by rw [List.perm_iff_count]; intro x; simp [List.count_cons] <;> omega) (Reach.refl _)
+              rw [show (v/2 - 2) + ((v+1)/2 - 2) = v - 4 from by omega] at h; exact h
+            have hfin : Reach [⟨a,b,2⟩] [v - 4, 2, 2] [2, v - 2] := by
+              have hcc : ∀ f ∈ ([⟨a,b,2⟩] : Config), ¬ ((f.a = v - 4 ∧ f.b = 2) ∨ (f.a = 2 ∧ f.b = v - 4)) := by
+                simp only [List.mem_singleton, forall_eq]; omega
+              refine reach_move' [2] (Local.nmerge (v - 4) 2 hcc)
+                (by rw [List.perm_iff_count]; intro x; simp [List.count_cons] <;> omega) ?_ (Reach.refl _)
+              rw [show (v - 4) + 2 = v - 2 from by omega]
+              exact List.Perm.swap (v - 2) 2 []
+            exact reach_trans hsp (reach_trans hfr1 (reach_trans hfr2 (reach_trans hmid hfin)))
+          · -- normal route
+            have hcc : ∀ f ∈ ([⟨a,b,2⟩] : Config),
+                ¬ ((f.a = v/2 - 2 ∧ f.b = (v+1)/2) ∨ (f.a = (v+1)/2 ∧ f.b = v/2 - 2)) := by
+              simp only [List.mem_singleton, forall_eq]; exact hbad
+            have hm0 : Reach [⟨a,b,2⟩] [v/2 - 2, (v+1)/2] [v/2 - 2 + (v+1)/2] :=
+              reach_move [] (Local.nmerge (v/2 - 2) ((v+1)/2) hcc) (List.Perm.refl _) (Reach.refl _)
+            have hmg : Reach [⟨a,b,2⟩] [2, v/2 - 2, (v+1)/2] [2, v - 2] := by
+              have := reach_frame_left [2] hm0
+              rw [show v/2 - 2 + (v+1)/2 = v - 2 from by omega] at this
+              simpa using this
+            exact reach_trans hsp (reach_trans hfr1 hmg)
+
+#print axioms YaStupid.peelc2
+
+end YaStupid
+
+
+namespace YaStupid
+
+/-- **All both-even `c=2` traps with legs `≥ 3` are solvable** (any `|a−b|`), via the
+    copies-of-`2` hub `peelc2` + `descendSeq`. -/
+theorem single_sufficiency_c2_both_even (a b ma mb : Nat) (ha3 : 3 ≤ a) (hb3 : 3 ≤ b)
+    (ha : ma * 2 = a) (hb : mb * 2 = b) (hma1 : 1 ≤ ma) (hmb1 : 1 ≤ mb) (hab : 2 < a + b) :
+    ∀ s t, Mval [⟨a,b,2⟩] ≤ s → Mval [⟨a,b,2⟩] ≤ t →
+      gz [⟨a,b,2⟩] ∣ ((t : Int) - s) → Reach [⟨a,b,2⟩] [s] [t] :=
+  single_sufficiency_div a b 2 ma mb (by omega) (by omega) (by omega) hab ha hb hma1 hmb1
+    (peelc2 a b ha3 hb3)
+
+/-- The trap `4 + 6 = 2` (both even, `b = a+2` — the previously-stuck adjacent case)
+    is solvable above `M = 11`. -/
+theorem solvable_4_6_2 {s t : Nat} (hs : 11 ≤ s) (ht : 11 ≤ t)
+    (h : (8:Int) ∣ ((t:Int) - s)) : Reach [⟨4,6,2⟩] [s] [t] := by
+  refine single_sufficiency_c2_both_even 4 6 2 3 (by omega) (by omega) (by omega) (by omega)
+    (by omega) (by omega) (by omega) s t ?_ ?_ ?_
+  · have : Mval [⟨4,6,2⟩] = 11 := by decide
+    omega
+  · have : Mval [⟨4,6,2⟩] = 11 := by decide
+    omega
+  · have : gz [⟨4,6,2⟩] = 8 := by decide
+    rw [this]; exact h
+
+#print axioms YaStupid.single_sufficiency_c2_both_even
+#print axioms YaStupid.solvable_4_6_2
+
+end YaStupid
