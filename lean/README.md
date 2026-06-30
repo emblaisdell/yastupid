@@ -174,29 +174,34 @@ So `[s] → 1^r → 1^t → [t]`, handling **arbitrarily many stuck clusters** u
 (`4+4=5`, `5+5=7`, `6+6=7`, …). `solvable_4_4_5` is a genuinely multi-cluster
 corollary (`2c=10` and `4c=20` both in range).
 
+### `a = b = 1` closed via 2-seeds (`single_sufficiency_a11`)
+
+The doubly-degenerate edge is now **done too**, so **all of `a + b < c` is fully
+mechanized**. The obstruction was that pure ones can only force-merge `{1,1} → c`.
+The fix is a **2-seed**: a `2` survives any clean scatter (`keep2`/`keep2hi`), and
+`mergeUnitsHi` (base `2 > max(1,1)`) reels ones onto it, so any value is buildable
+from `[2] + ones`. Descend reads: get a 2-seed (`reach2seed`), build `[2c]`, split
+to `[c,c]`, false-split one `c`, and reel everything onto the other `c` (positioning
+via `perm_c_ab`); the cluster starts `2c−1, 2c, 2c+1` harvest the `c` directly.
+`solvable_1_1_5` is a concrete corollary.
+
 ## What is *not* (yet) mechanized
 
-All remaining open families are **BFS-verified solvable** — an exhaustive
+The single remaining family is **BFS-verified solvable** — an exhaustive
 counterexample search ([`../test/counterexample-search.js`](../test/counterexample-search.js))
 checks both pumps for `1+1=c` (`c = 3..9`), every `a+b>c` with a leg `≥ c`
 (`2+10=7`, `2+2=2`, the pathological `1+14=7`, …) and finds **no counterexample
 anywhere**: the threshold `M = H+1` holds universally as far as the search reaches.
-So the gap below is a proof-engineering gap, not a math gap. These two families
-resist the all-ones hub for structural reasons:
+So the gap below is a proof-engineering gap, not a math gap:
 
-1. **`a = b = 1` with `a + b < c`** (e.g. `1+1=5`). From a pile of pure ones the
-   *only* merge is the forced `{1,1} → c`, so no ball can be built conservingly from
-   ones (and a one-pile can never descend) — the hub's build/descend steps fail.
-   Climb still works; descend needs a *structural* `c`-harvest (BFS: `1+1=5`,
-   `[9]→[4,5]→fsplit→[4,1,1]→[5,1]→[6]`).
-2. **`a + b > c` with a leg `≥ c`** (e.g. `2+10=7`, and the degenerate `a=b=c`,
-   `2+2=2`). Here `scatterRaw`'s max-value measure fails (the forced
-   `c → {a,b}` can *raise* the max), so the scatter recursion needs a subtler
-   termination measure. *(Note: `c ≤ (a+b)/2` always forces a leg `≥ c`, so it is
-   subsumed here — the `legs < c` hub already covers every `a+b>c` with both
-   legs below `c`, e.g. `6+6=7`.)*
+- **`a + b > c` with a leg `≥ c`** (e.g. `2+10=7`, and the degenerate `a=b=c`,
+  `2+2=2`). Here `scatterRaw`'s max-value measure fails (the forced `c → {a,b}` can
+  *raise* the max), and for `1+14=7` (`14 = 2c`) greedy scatter literally loops, so
+  the scatter recursion needs a subtler termination argument. *(Note: `c ≤ (a+b)/2`
+  always forces a leg `≥ c`, so it is subsumed here — the `legs < c` hub already
+  covers every `a+b>c` with both legs below `c`, e.g. `6+6=7`.)*
 
-These are intricate but mechanical; they are most comfortable over Mathlib.
+This is intricate but mechanical; it is most comfortable over Mathlib.
 
 Equivalently phrased — the two one-step pumps for an **arbitrary** configuration:
 
@@ -213,15 +218,16 @@ cluster structure).
 
 So the present status: **Classic is completely characterized (necessity +
 sufficiency + sharpness, all `sorry`-free) — and now *also* as a corollary of a
-fully symbolic theorem. Solvability is completely characterized for every single
-sum with `a + b < c` and not `a = b = 1` (`single_sufficiency_dneg` for `2 ≤ a, b`,
-`single_sufficiency_dneg_min1` for a unit leg), and for every `a + b > c` with both
-legs `< c` (`single_sufficiency_dpos_full`, e.g. `3+3=5`, `4+4=5`, `6+6=7`). The
-two remaining families — `a=b=1`, and `a+b>c` with a leg `≥ c` — are exhaustively
-BFS-checked to contain NO counterexample (`test/counterexample-search.js`): the
-threshold `M=H+1` is correct there too; only the Lean construction is missing.**
-Exhaustive search over the adversarial `{6+7=2, 6+8=3}` (where no `1` ever exists)
-likewise finds every in-range pump reachable.
+fully symbolic theorem. Solvability is now completely characterized for **every**
+single sum with `a + b < c` (`single_sufficiency_dneg` for `2 ≤ a, b`,
+`single_sufficiency_dneg_min1` for a unit leg, `single_sufficiency_a11` for
+`a = b = 1`), and for every `a + b > c` with both legs `< c`
+(`single_sufficiency_dpos_full`, e.g. `3+3=5`, `4+4=5`, `6+6=7`). The single
+remaining family — `a+b>c` with a leg `≥ c` — is exhaustively BFS-checked to
+contain NO counterexample (`test/counterexample-search.js`): the threshold `M=H+1`
+is correct there too; only the Lean construction is missing.** Exhaustive search
+over the adversarial `{6+7=2, 6+8=3}` (where no `1` ever exists) likewise finds
+every in-range pump reachable.
 
 ## Check it yourself
 

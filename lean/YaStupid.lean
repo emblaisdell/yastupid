@@ -2615,6 +2615,207 @@ theorem solvable_4_4_5 {s t : Nat} (hs : 9 ≤ s) (ht : 9 ≤ t)
 
 end YaStupid
 
+namespace YaStupid
+
+/-! ### The doubly-degenerate edge `a = b = 1` (`a + b < c`)
+
+From a pile of pure ones the only merge is the forced `{1,1} → c`, so nothing can
+be built from ones and a one-pile can never descend.  The fix: keep a **2-seed**.
+A `2` survives any clean scatter, and `mergeUnitsHi` (base `2 > max(1,1)`) reels
+ones onto it, so any value is buildable from `[2] + ones`.  Descend then reads:
+build `[2c]` from a 2-seed, split to `[c,c]`, false-split one `c` (losing `g`),
+and reel everything onto the other `c`. -/
+
+/-- A move that may permute its *result* (the generic `Step`, not just `reach_move`'s
+    `rfl` result). -/
+theorem reach_move' {cfg : Config} {a ain aout : List Nat} (rest : List Nat)
+    (hl : Local cfg ain aout) (hp : a.Perm (ain ++ rest)) {b bb : List Nat}
+    (hpb : bb.Perm (aout ++ rest)) (hr : Reach cfg bb b) : Reach cfg a b :=
+  Reach.step ⟨ain, aout, rest, hl, hp, hpb⟩ hr
+
+/-- Scatter `[v]` (with `v < c`) to ones but **keep one `2` at the front**. -/
+theorem keep2 (c : Nat) (hc3 : 3 ≤ c) :
+    ∀ v, 2 ≤ v → v < c → Reach [⟨1,1,c⟩] [v] (2 :: List.replicate (v - 2) 1) := by
+  intro v
+  induction v using Nat.strongRecOn with
+  | ind v ih =>
+    intro hv2 hvc
+    rcases Nat.lt_or_ge v 4 with hsmall | hge
+    · rcases Nat.lt_or_ge v 3 with h2 | h3
+      · have hv : v = 2 := by omega
+        subst hv; exact Reach.refl _
+      · have hv : v = 3 := by omega
+        subst hv
+        -- [3] → nsplit → [1,2], permute result to [2,1] = 2 :: replicate 1 1
+        exact reach_move' [] (Local.nsplit 3 (by omega)
+          (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _)
+          (by decide) (Reach.refl _)
+    · have hsp : Reach [⟨1,1,c⟩] [v] [v / 2, (v + 1) / 2] :=
+        reach_move [] (Local.nsplit v (by omega)
+          (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+      have s1 : Reach [⟨1,1,c⟩] [v / 2, (v + 1) / 2]
+          ((2 :: List.replicate (v / 2 - 2) 1) ++ [(v + 1) / 2]) := by
+        have := reach_frame [(v + 1) / 2] (ih (v / 2) (by omega) (by omega) (by omega))
+        simpa using this
+      have s2 : Reach [⟨1,1,c⟩] ((2 :: List.replicate (v / 2 - 2) 1) ++ [(v + 1) / 2])
+          ((2 :: List.replicate (v / 2 - 2) 1) ++ List.replicate ((v + 1) / 2) 1) :=
+        reach_frame_left _ (scatterClean 1 1 c ((v + 1) / 2) (by omega) (by omega))
+      have e : (2 :: List.replicate (v / 2 - 2) 1) ++ List.replicate ((v + 1) / 2) 1
+          = 2 :: List.replicate (v - 2) 1 := by
+        rw [List.cons_append, replicate_one_add]; congr 2; omega
+      rw [e] at s2
+      exact reach_trans hsp (reach_trans s1 s2)
+
+/-- Scatter `[v]` (with `c+1 ≤ v ≤ 2c−2`) to ones, keeping one `2` at the front. -/
+theorem keep2hi (c : Nat) (hc3 : 3 ≤ c) :
+    ∀ v, c + 1 ≤ v → v ≤ 2 * c - 2 → Reach [⟨1,1,c⟩] [v] (2 :: List.replicate (v - 2) 1) := by
+  intro v h1 h2
+  have hsp : Reach [⟨1,1,c⟩] [v] [v / 2, (v + 1) / 2] :=
+    reach_move [] (Local.nsplit v (by omega)
+      (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+  have s1 : Reach [⟨1,1,c⟩] [v / 2, (v + 1) / 2]
+      ((2 :: List.replicate (v / 2 - 2) 1) ++ [(v + 1) / 2]) := by
+    have := reach_frame [(v + 1) / 2] (keep2 c hc3 (v / 2) (by omega) (by omega))
+    simpa using this
+  have s2 : Reach [⟨1,1,c⟩] ((2 :: List.replicate (v / 2 - 2) 1) ++ [(v + 1) / 2])
+      ((2 :: List.replicate (v / 2 - 2) 1) ++ List.replicate ((v + 1) / 2) 1) :=
+    reach_frame_left _ (scatterClean 1 1 c ((v + 1) / 2) (by omega) (by omega))
+  have e : (2 :: List.replicate (v / 2 - 2) 1) ++ List.replicate ((v + 1) / 2) 1
+      = 2 :: List.replicate (v - 2) 1 := by
+    rw [List.cons_append, replicate_one_add]; congr 2; omega
+  rw [e] at s2
+  exact reach_trans hsp (reach_trans s1 s2)
+
+/-- Reach a single 2-seed plus ones, `[m] → 2 :: 1^(m-2)`, for `m ∈ [2c+2, 4c-4]`
+    (both halves land in `[c+1, 2c-2]`). -/
+theorem reach2seed (c : Nat) (hc3 : 3 ≤ c) :
+    ∀ m, 2 * c + 2 ≤ m → m ≤ 4 * c - 4 → Reach [⟨1,1,c⟩] [m] (2 :: List.replicate (m - 2) 1) := by
+  intro m h1 h2
+  have hsp : Reach [⟨1,1,c⟩] [m] [m / 2, (m + 1) / 2] :=
+    reach_move [] (Local.nsplit m (by omega)
+      (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+  have s1 : Reach [⟨1,1,c⟩] [m / 2, (m + 1) / 2]
+      ((2 :: List.replicate (m / 2 - 2) 1) ++ [(m + 1) / 2]) := by
+    have := reach_frame [(m + 1) / 2] (keep2hi c hc3 (m / 2) (by omega) (by omega))
+    simpa using this
+  have s2 : Reach [⟨1,1,c⟩] ((2 :: List.replicate (m / 2 - 2) 1) ++ [(m + 1) / 2])
+      ((2 :: List.replicate (m / 2 - 2) 1) ++ List.replicate ((m + 1) / 2) 1) :=
+    reach_frame_left _ (getUnits 1 1 c ((m + 1) / 2) (by omega) (by omega))
+  have e : (2 :: List.replicate (m / 2 - 2) 1) ++ List.replicate ((m + 1) / 2) 1
+      = 2 :: List.replicate (m - 2) 1 := by
+    rw [List.cons_append, replicate_one_add]; congr 2; omega
+  rw [e] at s2
+  exact reach_trans hsp (reach_trans s1 s2)
+
+/-- Descend the cluster value `2c−1` (`a=b=1`): split to `[c−1, c]`, false-split
+    the `c`, reel the two ones onto `c−1`. -/
+theorem descA_2cm1 (c : Nat) (hc3 : 3 ≤ c) : Reach [⟨1,1,c⟩] [2 * c - 1] [c + 1] := by
+  have hsp : Reach [⟨1,1,c⟩] [2 * c - 1] [(2*c-1)/2, (2*c-1+1)/2] :=
+    reach_move [] (Local.nsplit (2*c-1) (by omega)
+      (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+  rw [show (2*c-1)/2 = c - 1 from by omega, show (2*c-1+1)/2 = c from by omega] at hsp
+  have hmu := mergeUnitsHi 1 1 c 2 (c - 1) (by omega)
+  rw [show (c - 1) + 2 = c + 1 from by omega] at hmu
+  exact reach_trans hsp (reach_move' [c - 1] (Local.fsplit ⟨1,1,c⟩ (List.mem_singleton.2 rfl))
+    (List.Perm.swap c (c - 1) []) (perm_c_ab 1 1 (c - 1) []) hmu)
+
+/-- Descend the stuck value `2c` (`a=b=1`): `2c → [c,c]`, false-split one `c`, reel
+    the two ones onto the other `c`. -/
+theorem descA_2c (c : Nat) (hc3 : 3 ≤ c) : Reach [⟨1,1,c⟩] [2 * c] [c + 2] := by
+  have hsp : Reach [⟨1,1,c⟩] [2 * c] [(2*c)/2, (2*c+1)/2] :=
+    reach_move [] (Local.nsplit (2*c) (by omega)
+      (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+  rw [show (2*c)/2 = c from by omega, show (2*c+1)/2 = c from by omega] at hsp
+  have hmu := mergeUnitsHi 1 1 c 2 c (by omega)
+  exact reach_trans hsp (reach_move' [c] (Local.fsplit ⟨1,1,c⟩ (List.mem_singleton.2 rfl))
+    (List.Perm.refl _) (perm_c_ab 1 1 c []) hmu)
+
+/-- Descend the cluster value `2c+1` (`a=b=1`). -/
+theorem descA_2cp1 (c : Nat) (hc3 : 3 ≤ c) : Reach [⟨1,1,c⟩] [2 * c + 1] [c + 3] := by
+  have hsp : Reach [⟨1,1,c⟩] [2 * c + 1] [(2*c+1)/2, (2*c+1+1)/2] :=
+    reach_move [] (Local.nsplit (2*c+1) (by omega)
+      (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+  rw [show (2*c+1)/2 = c from by omega, show (2*c+1+1)/2 = c + 1 from by omega] at hsp
+  have hmu := mergeUnitsHi 1 1 c 2 (c + 1) (by omega)
+  rw [show (c + 1) + 2 = c + 3 from by omega] at hmu
+  exact reach_trans hsp (reach_move' [c + 1] (Local.fsplit ⟨1,1,c⟩ (List.mem_singleton.2 rfl))
+    (List.Perm.refl _) (perm_c_ab 1 1 (c + 1) []) hmu)
+
+/-- Descend any `m ∈ [2c+2, 4c-4]` (`a=b=1`): get a 2-seed, build `[2c]`, split to
+    `[c,c]`, false-split one `c`, reel everything onto the other. -/
+theorem descA_hi (c : Nat) (hc3 : 3 ≤ c) :
+    ∀ m, 2 * c + 2 ≤ m → m ≤ 4 * c - 4 → Reach [⟨1,1,c⟩] [m] [m - (c - 2)] := by
+  intro m h1 h2
+  have s_seed := reach2seed c hc3 m h1 h2
+  have hsplitrep : (2 :: List.replicate (m - 2) 1)
+      = (2 :: List.replicate (2*c - 2) 1) ++ List.replicate (m - 2*c) 1 := by
+    rw [List.cons_append, replicate_one_add]; congr 2; omega
+  have s_build : Reach [⟨1,1,c⟩] (2 :: List.replicate (m - 2) 1)
+      (2 * c :: List.replicate (m - 2*c) 1) := by
+    rw [hsplitrep]
+    have hmu := mergeUnitsHi 1 1 c (2*c - 2) 2 (by omega)
+    rw [show 2 + (2*c - 2) = 2 * c from by omega] at hmu
+    have := reach_frame (List.replicate (m - 2*c) 1) hmu; simpa using this
+  have s_split : Reach [⟨1,1,c⟩] (2 * c :: List.replicate (m - 2*c) 1)
+      (c :: c :: List.replicate (m - 2*c) 1) := by
+    have hm := reach_move (List.replicate (m - 2*c) 1)
+      (Local.nsplit (cfg := [⟨1,1,c⟩]) (2*c) (by omega)
+        (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+    rw [show (2*c)/2 = c from by omega, show (2*c+1)/2 = c from by omega] at hm
+    simpa using hm
+  have s_fire : Reach [⟨1,1,c⟩] (c :: c :: List.replicate (m - 2*c) 1) [m - (c - 2)] := by
+    have hmu := mergeUnitsHi 1 1 c (m - 2*c + 2) c (by omega)
+    rw [show c + (m - 2*c + 2) = m - (c - 2) from by omega] at hmu
+    refine reach_move' (c :: List.replicate (m - 2*c) 1)
+      (Local.fsplit ⟨1,1,c⟩ (List.mem_singleton.2 rfl)) (List.Perm.refl _) ?_ hmu
+    rw [show m - 2*c + 2 = (m - 2*c) + 1 + 1 from by omega, List.replicate_succ, List.replicate_succ]
+    exact perm_c_ab 1 1 c (List.replicate (m - 2*c) 1)
+  exact reach_trans s_seed (reach_trans s_build (reach_trans s_split s_fire))
+
+/-- **The descend base for `a=b=1`.** -/
+theorem baseD_a11 (c : Nat) (hc3 : 3 ≤ c) :
+    ∀ n, Mval [⟨1,1,c⟩] ≤ n → n ≤ 2 * Hnat [⟨1,1,c⟩] + gnat [⟨1,1,c⟩] →
+      Reach [⟨1,1,c⟩] [n + gnat [⟨1,1,c⟩]] [n] := by
+  have hH : Hnat [⟨1,1,c⟩] = c := by show max (max (1 + 1) c) 0 = c; omega
+  have hgn : gnat [⟨1,1,c⟩] = c - 2 := by rw [gnat_single]; omega
+  have hMv : Mval [⟨1,1,c⟩] = c + 1 := by show Hnat [⟨1,1,c⟩] + 1 = c + 1; rw [hH]
+  intro n hn1 hn2
+  have hn1' : c + 1 ≤ n := by omega
+  have hn2' : n ≤ 2 * c + (c - 2) := by omega
+  rw [hgn]
+  by_cases he1 : n = c + 1
+  · rw [he1, show (c + 1) + (c - 2) = 2 * c - 1 from by omega]; exact descA_2cm1 c hc3
+  · by_cases he2 : n = c + 2
+    · rw [he2, show (c + 2) + (c - 2) = 2 * c from by omega]; exact descA_2c c hc3
+    · by_cases he3 : n = c + 3
+      · rw [he3, show (c + 3) + (c - 2) = 2 * c + 1 from by omega]; exact descA_2cp1 c hc3
+      · have := descA_hi c hc3 (n + (c - 2)) (by omega) (by omega)
+        rwa [show n + (c - 2) - (c - 2) = n from by omega] at this
+
+/-- **Full sufficiency for `a = b = 1`** (`1 + 1 = c`, `c ≥ 3`).  This closes the
+    last `a + b < c` family: solvability is now completely characterized for
+    *every* single sum with `a + b < c`. -/
+theorem single_sufficiency_a11 (c : Nat) (hc3 : 3 ≤ c) :
+    ∀ s t, Mval [⟨1,1,c⟩] ≤ s → Mval [⟨1,1,c⟩] ≤ t →
+      gz [⟨1,1,c⟩] ∣ ((t : Int) - s) → Reach [⟨1,1,c⟩] [s] [t] :=
+  single_sufficiency_of_base 1 1 c (by omega) (by omega) (by omega) (by omega)
+    (baseC_dneg 1 1 c (by omega) (by omega) (by omega))
+    (baseD_a11 c hc3)
+
+/-- The lie `1 + 1 = 5` is completely solvable above `M = 6`. -/
+theorem solvable_1_1_5 {s t : Nat} (hs : 6 ≤ s) (ht : 6 ≤ t)
+    (h : (3:Int) ∣ ((t:Int) - s)) : Reach [⟨1,1,5⟩] [s] [t] :=
+  single_sufficiency_a11 5 (by decide) s t hs ht (by
+    have : gz [⟨1,1,5⟩] = 3 := by decide
+    rw [this]; exact h)
+
+#print axioms YaStupid.descA_hi
+#print axioms YaStupid.baseD_a11
+#print axioms YaStupid.single_sufficiency_a11
+#print axioms YaStupid.solvable_1_1_5
+
+end YaStupid
+
 #print axioms YaStupid.gatherMin1
 #print axioms YaStupid.loseGmin1
 #print axioms YaStupid.baseD_dneg_min1
