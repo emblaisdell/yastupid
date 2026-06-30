@@ -5740,3 +5740,76 @@ theorem solvable_4_6_2 {s t : Nat} (hs : 11 ≤ s) (ht : 11 ≤ t)
 #print axioms YaStupid.solvable_4_6_2
 
 end YaStupid
+
+
+namespace YaStupid
+
+/-! ### `c = 2` with `a = b` (any parity): `single_sufficiency_c2_aa`
+
+When `a = b` (and `c = 2`), descend works even for *odd* `a` (where `descendSeq`
+fails, `2 ∤ a`): build `[2a]` from `a` copies of `2` (sequential gather, safe since
+`a ≥ 3 ⇒ 2 ∉ {a}`), **split** `[2a] → {a,a}` (normal, `2a ≠ 2`), then false-merge
+`{a,a} → 2`.  No `1`s, no power-of-`2` obstruction. -/
+
+/-- Descend for `⟨a,a,2⟩` (`a ≥ 3`): `[n+(2a-2)] → [n]`. -/
+theorem descendAA2 (a : Nat) (ha3 : 3 ≤ a)
+    (hpeel : ∀ v, 3 ≤ v → Reach [⟨a,a,2⟩] [v] [2, v - 2]) :
+    ∀ n, a + a + 1 ≤ n → Reach [⟨a,a,2⟩] [n + (a + a - 2)] [n] := by
+  intro n hn
+  have hpe := peelcManyG a a 2 hpeel a (n + (a + a - 2)) (by omega)
+  rw [show n + (a + a - 2) - a * 2 = n - 2 from by omega] at hpe
+  -- gather the a copies of 2 into [2a]
+  have hgs : ∀ k, 1 ≤ k → k < a → ¬ ((a = 2 ∧ a = k*2) ∨ (a = k*2 ∧ a = 2)) := by
+    intro k _ _; omega
+  have hga : Reach [⟨a,a,2⟩] (List.replicate a 2) [a * 2] := gatherCvalG a a 2 a (by omega) hgs
+  have g1 : Reach [⟨a,a,2⟩] (List.replicate a 2 ++ [n - 2]) ([a * 2] ++ [n - 2]) := reach_frame _ hga
+  -- split [2a] -> [a,a]
+  have hsplit : Reach [⟨a,a,2⟩] [a * 2] [a, a] := by
+    have h : Reach [⟨a,a,2⟩] [a * 2] [(a*2)/2, (a*2+1)/2] :=
+      reach_move [] (Local.nsplit (a*2) (by omega) (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+    rwa [show (a*2)/2 = a from by omega, show (a*2+1)/2 = a from by omega] at h
+  have g2 : Reach [⟨a,a,2⟩] ([a * 2] ++ [n - 2]) [a, a, n - 2] := by
+    have := reach_frame [n - 2] hsplit; simpa using this
+  have hfm : Reach [⟨a,a,2⟩] [a, a, n - 2] [2, n - 2] := by
+    have hm := reach_move [n - 2] (Local.fmerge ⟨a,a,2⟩ (List.mem_singleton.2 rfl)) (List.Perm.refl _) (Reach.refl _)
+    simpa using hm
+  have hmg : Reach [⟨a,a,2⟩] [2, n - 2] [n] := by
+    have hcc : ∀ f ∈ ([⟨a,a,2⟩] : Config), ¬ ((f.a = 2 ∧ f.b = n - 2) ∨ (f.a = n - 2 ∧ f.b = 2)) := by
+      simp only [List.mem_singleton, forall_eq]; omega
+    have hmm := reach_move [] (Local.nmerge 2 (n - 2) hcc) (List.Perm.refl _) (Reach.refl _)
+    rw [show 2 + (n - 2) = n from by omega] at hmm
+    exact hmm
+  exact reach_trans hpe (reach_trans g1 (reach_trans g2 (reach_trans hfm hmg)))
+
+/-- **`⟨a,a,2⟩` is solvable for every `a ≥ 3`** (both parities; e.g. `3+3=2`, `5+5=2`). -/
+theorem single_sufficiency_c2_aa (a : Nat) (ha3 : 3 ≤ a) :
+    ∀ s t, Mval [⟨a,a,2⟩] ≤ s → Mval [⟨a,a,2⟩] ≤ t →
+      gz [⟨a,a,2⟩] ∣ ((t : Int) - s) → Reach [⟨a,a,2⟩] [s] [t] := by
+  have hpeel := peelc2 a a ha3 ha3
+  have hg : gnat [⟨a,a,2⟩] = a + a - 2 := gnat_dpos a a 2 (by omega)
+  have hM : Mval [⟨a,a,2⟩] = a + a + 1 := by
+    show Hnat [⟨a,a,2⟩] + 1 = a + a + 1; rw [Hnat_dpos a a 2 (by omega)]
+  have climb : ∀ n, Mval [⟨a,a,2⟩] ≤ n → Reach [⟨a,a,2⟩] [n] [n + gnat [⟨a,a,2⟩]] := by
+    intro n hn; rw [hg, hM] at *; exact climbTrap a a 2 (by omega) (by omega) (by omega) (by omega) hpeel n (by omega)
+  have descend : ∀ n, Mval [⟨a,a,2⟩] ≤ n → Reach [⟨a,a,2⟩] [n + gnat [⟨a,a,2⟩]] [n] := by
+    intro n hn; rw [hg, hM] at *; exact descendAA2 a ha3 hpeel n (by omega)
+  intro s t hs ht hg'
+  exact sufficiency_of_pumps climb descend hs ht hg'
+
+/-- The trap `3 + 3 = 2` (odd legs, `a=b`; `descendSeq` does not apply) is solvable
+    above `M = 7`. -/
+theorem solvable_3_3_2 {s t : Nat} (hs : 7 ≤ s) (ht : 7 ≤ t)
+    (h : (4:Int) ∣ ((t:Int) - s)) : Reach [⟨3,3,2⟩] [s] [t] := by
+  refine single_sufficiency_c2_aa 3 (by omega) s t ?_ ?_ ?_
+  · have : Mval [⟨3,3,2⟩] = 7 := by decide
+    omega
+  · have : Mval [⟨3,3,2⟩] = 7 := by decide
+    omega
+  · have : gz [⟨3,3,2⟩] = 4 := by decide
+    rw [this]; exact h
+
+#print axioms YaStupid.descendAA2
+#print axioms YaStupid.single_sufficiency_c2_aa
+#print axioms YaStupid.solvable_3_3_2
+
+end YaStupid
