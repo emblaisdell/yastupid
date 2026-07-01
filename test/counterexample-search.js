@@ -3,7 +3,8 @@
    For each single false sum, sufficiency reduces (sufficiency_of_pumps, proved in
    Lean) to the two one-step pumps  [n] -> [n+g]  and  [n+g] -> [n]  for every
    n >= M.  This script BFS-checks those pumps directly for the families that are
-   NOT yet mechanized in lean/YaStupid.lean:
+   NOT yet mechanized in Lean (the formalization lives in the math-playground
+   vaults ../math_dirty and ../math_bitter, under false-sums/):
 
      - a = b = 1  with a+b < c     (e.g. 1+1=5): pure ones can only force-merge
        {1,1} -> c, so the all-ones hub cannot build/descend; descend needs a

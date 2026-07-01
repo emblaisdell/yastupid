@@ -33,12 +33,12 @@ M = H + 1            (the sharp guaranteed threshold)
 ```
 
 Classic: `g = 2`, `H = 21`, `M = 22`. The bound is sharp because of the **21
-trap** (`21 ↛ 23`). Full statement, proof, and sharpness are in
-[`docs/minimum-value.md`](docs/minimum-value.md).
+trap** (`21 ↛ 23`).
 
-**Classic mode is fully characterized in machine-checked Lean 4**: necessity (any
-number of false sums), sharpness (the 21-trap), and **full sufficiency**
-(`∀ s,t ≥ 22` with `2 ∣ (t−s)`, solvable) — all `sorry`-free. See [`lean/`](lean/).
+The full statement, proofs, sharpness, and a machine-checked Lean 4 formalization
+live in the math-playground vaults `../math_dirty` and `../math_bitter` (under
+`false-sums/`) — this repo is just the game. `test/verify.js` re-checks the rules
+the game relies on.
 
 ## Run locally
 
@@ -60,6 +60,5 @@ node test/verify.js              # BFS reachability checks + sharpness spot-chec
 index.html             markup + HUD
 css/style.css          styling (mobile-first, responsive)
 js/game.js             engine: physics, gestures, rules, levels
-docs/minimum-value.md  the minimum-value theorem and proof
 test/verify.js         brute-force reachability verifier
 ```
