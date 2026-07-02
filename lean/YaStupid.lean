@@ -5092,7 +5092,7 @@ false splits `c→{c,2c}`) and rides two false merges `{c,2c}→c` back down.  T
 the one genuinely bespoke step; everything else recurses around it. -/
 
 /-- `[4c] → [c, 3c]` in `⟨c,2c,c⟩` (`c ≥ 3`): the 11-move escape. -/
-theorem peel4c (c : Nat) (hc3 : 3 ≤ c) :
+theorem peel4c (c : Nat) (hc3 : 2 ≤ c) :
     Reach [⟨c, 2*c, c⟩] [4*c] [c, 3*c] := by
   -- 1: split 4c → [2c,2c]
   have step1 : Reach [⟨c,2*c,c⟩] [4*c] [2*c,2*c] := by
@@ -5166,7 +5166,7 @@ namespace YaStupid
 /-- **`peelc` for the pathological shape `⟨c,2c,c⟩`** (`c ≥ 3`): peel a `c` off any
     `v ≥ c+1`.  Identical recursion to `peelcG`, but the lone bad value `v = 4c`
     (where `{v/2−c,(v+1)/2} = {c,2c}`) is routed through `peel4c`. -/
-theorem peelc_c2c (c : Nat) (hc3 : 3 ≤ c) :
+theorem peelc_c2c (c : Nat) (hc3 : 2 ≤ c) :
     ∀ v, c + 1 ≤ v → Reach [⟨c, 2*c, c⟩] [v] [c, v - c] := by
   intro v
   induction v using Nat.strongRecOn with
@@ -5423,7 +5423,7 @@ theorem reach_swap (a b c : Nat) : ∀ {s t}, Reach [⟨a,b,c⟩] s t → Reach 
 
 /-- **The `⟨c,2c,c⟩` trap is solvable** (`c ≥ 3`): every `s,t ≥ M = 3c+1` with
     `(2c) ∣ (t−s)` are interreachable. -/
-theorem single_sufficiency_c2c (c : Nat) (hc3 : 3 ≤ c) :
+theorem single_sufficiency_c2c (c : Nat) (hc3 : 2 ≤ c) :
     ∀ s t, Mval [⟨c, 2*c, c⟩] ≤ s → Mval [⟨c, 2*c, c⟩] ≤ t →
       gz [⟨c, 2*c, c⟩] ∣ ((t : Int) - s) → Reach [⟨c, 2*c, c⟩] [s] [t] :=
   single_sufficiency_trap c (2*c) c 0 1 (by omega) (by omega) (by omega) (by omega)
