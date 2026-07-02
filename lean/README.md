@@ -355,21 +355,32 @@ Crucially none of these needs a `1`-source from `[n+g]`: odd legs are reached by
 **splitting an even ball** (`6 → {3,3}`), and a targeted bidirectional BFS confirms even a
 power-of-`2` source descends with **no false split**.
 
+### `c = 2` with a leg `= c` (`⟨2,b,2⟩`) — closed
+
+`single_sufficiency_2b2` closes **every** `⟨2,b,2⟩` (`b ≥ 3`), and `⟨a,2,2⟩` follows by
+`reach_swap` (`⟨2,2,2⟩` is `single_sufficiency_222`).  Here `a = c = 2`, so *every*
+`{x,2}` merge is the forbidden pair when `x = b`.  `peel2G` peels a `2` via a two-route
+recursion; `descend2_odd` builds the odd leg from a `[3]` seed and uses the gadget's
+spare `2` as the false-merge partner and its spare `1` (safe: `1 ∉ {2,b}`) to repair the
+leftover.  Even `b` reuses `single_sufficiency_div`; `b = 4` is `⟨c,2c,c⟩` at `c = 2`
+(via the `c ≥ 2`-relaxed `single_sufficiency_c2c`).
+
 ## What is *not* (yet) mechanized
 
-A single degenerate sliver remains (BFS-verified solvable — see below):
-- **`c = 2` with a leg equal to `c`** (i.e. `a = 2` or `b = 2`, so a leg coincides with
-  the merge target — `⟨2,b,2⟩`, `⟨a,2,2⟩`).  The pumps still hold (BFS), but the value
-  `2` is simultaneously a leg and the locked target, so the `legs ≥ 3` safety the `c=2`
-  peeler/gather rely on (`{·,2} ≠ {a,b}`) no longer holds; closing it needs a bespoke
-  treatment of the `a = c` coincidence (the `c ≥ 3` analogue `⟨c,2c,c⟩` is handled by
-  `peel4c`).
+Only the **unit-leg `a = 1`** configs whose *other* structure blocks the `c ≥ 3` hub
+remain — specifically `⟨1,b,2⟩` (`c = 2`, `b ≥ 3`) and `⟨1,c,c⟩` (`b = c`, any `c`;
+`g = 1`).  (For `c ≥ 3`, `b > c` is already closed by `single_sufficiency_a1` /
+`single_sufficiency_1bc`.)  These are subtle: naive peeling fails outright — e.g.
+`[c] → [1,c−1]` and even `[5] → [1,4]` in `⟨1,3,3⟩` are **provably unreachable** (a `[c]`
+only false-splits, and `1 ∈ {a,b}` poisons `{·,1}` merges), so the descend must take an
+ad-hoc route that produces the `1` by splitting an *odd* ball (e.g. `3 → {1,2}`) rather
+than peeling one.  A uniform such descend is the remaining construction.
 
 This is a construction gap, not a math gap: an exhaustive search
 ([`../test/counterexample-search.js`](../test/counterexample-search.js)) plus targeted
-bidirectional BFS over the `c·2^k` traps and the whole `c=2` family (every pump gap
-`[n] ↔ [n+g]` for many `n`) find **no counterexample anywhere** — `M = H+1` holds
-universally, including for the open odd-leg `c=2` configs.
+bidirectional BFS over the `c·2^k` traps, the whole `c=2` family, and these `a=1`
+families (every pump gap `[n] ↔ [n+g]` for many `n`) find **no counterexample
+anywhere** — `M = H+1` holds universally, including for the open `a=1` configs.
 
 Equivalently phrased — the two one-step pumps for an **arbitrary** configuration:
 
