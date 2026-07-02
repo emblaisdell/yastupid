@@ -6600,3 +6600,46 @@ theorem solvable_1_6_2 {s t : Nat} (hs : 8 ≤ s) (ht : 8 ≤ t)
 #print axioms YaStupid.solvable_1_6_2
 
 end YaStupid
+
+
+namespace YaStupid
+
+/-! ### The doubly-degenerate trap `⟨1,c,c⟩` (`a = 1`, `b = c`, `g = 1`)
+
+`c` false-splits to `{1,c}` (regenerating `c`), so ones are *not* reachable — a genuine
+trap. `peelcG 1 c c` still peels a `c` (the recursion is coincidence-free here). Climb
+peels a `c`, false-splits `c→{1,c}`, and merges back. -/
+
+/-- Peeler for `⟨1,c,c⟩` (`c ≥ 2`): `[v] → [c, v-c]`. -/
+theorem peelc_1cc (c : Nat) (hc2 : 2 ≤ c) :
+    ∀ v, c + 1 ≤ v → Reach [⟨1,c,c⟩] [v] [c, v - c] :=
+  peelcG 1 c c (by omega) (by omega) (by omega) (by omega) ⟨by omega, by omega, by omega, by omega⟩
+
+/-- **Climb pump for `⟨1,c,c⟩`**: `[n] → [n+1]` for `n ≥ c+2`.  Peel a `c`, false-split
+    `c→{1,c}`, merge back. -/
+theorem climb_1cc (c : Nat) (hc2 : 2 ≤ c) :
+    ∀ n, c + 2 ≤ n → Reach [⟨1,c,c⟩] [n] [n + (1 + c - c)] := by
+  intro n hn
+  have hp := peelc_1cc c hc2 n (by omega)
+  have hfs : Reach [⟨1,c,c⟩] [c, n - c] [1, c, n - c] := by
+    have hm := reach_move [n - c] (Local.fsplit ⟨1,c,c⟩ (List.mem_singleton.2 rfl)) (List.Perm.refl _) (Reach.refl _)
+    simpa using hm
+  have hm1 : Reach [⟨1,c,c⟩] [1, c, n - c] [1, n] := by
+    have hcc : ∀ f ∈ ([⟨1,c,c⟩] : Config), ¬ ((f.a = c ∧ f.b = n - c) ∨ (f.a = n - c ∧ f.b = c)) := by
+      simp only [List.mem_singleton, forall_eq]; omega
+    have hm0 : Reach [⟨1,c,c⟩] [c, n - c] [c + (n - c)] :=
+      reach_move [] (Local.nmerge c (n - c) hcc) (List.Perm.refl _) (Reach.refl _)
+    rw [show c + (n - c) = n from by omega] at hm0
+    have := reach_frame_left [1] hm0; simpa using this
+  have hm2 : Reach [⟨1,c,c⟩] [1, n] [n + (1 + c - c)] := by
+    have hcc : ∀ f ∈ ([⟨1,c,c⟩] : Config), ¬ ((f.a = 1 ∧ f.b = n) ∨ (f.a = n ∧ f.b = 1)) := by
+      simp only [List.mem_singleton, forall_eq]; omega
+    have hm := reach_move [] (Local.nmerge 1 n hcc) (List.Perm.refl _) (Reach.refl _)
+    rw [show 1 + n = n + (1 + c - c) from by omega] at hm
+    exact hm
+  exact reach_trans hp (reach_trans hfs (reach_trans hm1 hm2))
+
+#print axioms YaStupid.peelc_1cc
+#print axioms YaStupid.climb_1cc
+
+end YaStupid
