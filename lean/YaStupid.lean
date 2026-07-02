@@ -7007,3 +7007,194 @@ theorem solvable_1_2_2 {s t : Nat} (hs : 4 ≤ s) (ht : 4 ≤ t) : Reach [⟨1,2
 #print axioms YaStupid.solvable_1_2_2
 
 end YaStupid
+
+
+namespace YaStupid
+
+/-! ### The `c = 1` family `⟨a,b,1⟩` (`b ≥ 2`; `⟨1,1,1⟩` is `solvable_1_1_1`)
+
+With `c = 1` no ball is blocked from *normal* splitting (`nsplit` needs `n ≥ 2 ≠ 1`),
+so everything scatters to ones freely (`scatAll1`); only the merge `{a,b}` and the
+false split of a `1` are special.  Climb: fsplit a `1 → {a,b}`, absorb a `1` into the
+`a` (safe: `{a,1} = {a,b}` iff `b = 1`), merge `{a+1,b}` (never the false pair), reel
+in the ones.  Descend: gather `[a]`,`[b]`, false-merge to a `1`, rebuild `[n]`
+(`buildBall_c1`, three parity-free cases on `a`). -/
+
+/-- Scatter any `[v]` to ones when `c = 1`: plain recursive splitting. -/
+theorem scatAll1 (a b : Nat) : ∀ v, 1 ≤ v → Reach [⟨a,b,1⟩] [v] (List.replicate v 1) := by
+  intro v
+  induction v using Nat.strongRecOn with
+  | ind v ih =>
+    intro hv
+    rcases Nat.lt_or_ge v 2 with h1 | h2
+    · have hv1 : v = 1 := by omega
+      subst hv1; exact Reach.refl _
+    · have hsplit : Reach [⟨a,b,1⟩] [v] [v/2, (v+1)/2] :=
+        reach_move [] (Local.nsplit v (by omega)
+          (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+      have h1 := ih (v/2) (by omega) (by omega)
+      have h2' := ih ((v+1)/2) (by omega) (by omega)
+      have s1 := reach_frame [(v+1)/2] h1
+      have s2 := reach_frame_left (List.replicate (v/2) 1) h2'
+      have hcat : List.replicate (v/2) 1 ++ List.replicate ((v+1)/2) 1 = List.replicate v 1 := by
+        rw [replicate_one_add]; congr 1; omega
+      rw [hcat] at s2
+      exact reach_trans hsplit (reach_trans s1 s2)
+
+/-- Gather `k` ones onto `[v]` when `2 ≤ a, b` (`{x,1}` is never `{a,b}`). -/
+theorem mergeUnits2 (a b c : Nat) (ha2 : 2 ≤ a) (hb2 : 2 ≤ b) :
+    ∀ k v, Reach [⟨a,b,c⟩] (v :: List.replicate k 1) [v + k] := by
+  intro k
+  induction k with
+  | zero => intro v; exact Reach.refl _
+  | succ k ih =>
+    intro v
+    have hc : ∀ f ∈ ([⟨a,b,c⟩]:Config), ¬ ((f.a = v ∧ f.b = 1) ∨ (f.a = 1 ∧ f.b = v)) := by
+      simp only [List.mem_singleton, forall_eq]; omega
+    have hm := reach_move (List.replicate k 1) (Local.nmerge v 1 hc) (List.Perm.refl _) (Reach.refl _)
+    have hrec := ih (v+1)
+    rw [show (v+1) + k = v + (k+1) from by omega] at hrec
+    exact reach_trans hm hrec
+
+/-- Rebuild `[n]` from `1^n` in `⟨a,b,1⟩` (`n ≥ a+b+1`). -/
+theorem buildBall_c1 (a b : Nat) (ha1 : 1 ≤ a) (hb2 : 2 ≤ b) :
+    ∀ n, a + b + 1 ≤ n → Reach [⟨a,b,1⟩] (List.replicate n 1) [n] := by
+  intro n hn
+  by_cases ha2 : 2 ≤ a
+  · -- gather [a], then absorb all ones ({x,1} never {a,b} since a,b ≥ 2)
+    have hg : Reach [⟨a,b,1⟩] (List.replicate n 1) (a :: List.replicate (n - a) 1) :=
+      gatherPrefix a b 1 a n (by omega) (by omega) (by omega)
+    have hm := mergeUnits2 a b 1 ha2 hb2 (n - a) a
+    rw [show a + (n - a) = n from by omega] at hm
+    exact reach_trans hg hm
+  · -- a = 1
+    have ha1e : a = 1 := by omega
+    subst ha1e
+    by_cases hb3 : 3 ≤ b
+    · -- gather [b-1] and [2], merge them to [b+1] (skips the forbidden {1,b}), reel in
+      have hg1 : Reach [⟨1,b,1⟩] (List.replicate n 1) ((b-1) :: List.replicate (n - (b-1)) 1) :=
+        gatherPrefix 1 b 1 (b-1) n (by omega) (by omega) (by omega)
+      have hg2 : Reach [⟨1,b,1⟩] ((b-1) :: List.replicate (n - (b-1)) 1)
+          ((b-1) :: 2 :: List.replicate (n - (b-1) - 2) 1) := by
+        have := reach_frame_left [b-1] (gatherPrefix 1 b 1 2 (n - (b-1)) (by omega) (by omega) (by omega))
+        simpa using this
+      have hm1 : Reach [⟨1,b,1⟩] ((b-1) :: 2 :: List.replicate (n - (b-1) - 2) 1)
+          ((b+1) :: List.replicate (n - b - 1) 1) := by
+        have hcc : ∀ f ∈ ([⟨1,b,1⟩]:Config), ¬ ((f.a = b-1 ∧ f.b = 2) ∨ (f.a = 2 ∧ f.b = b-1)) := by
+          simp only [List.mem_singleton, forall_eq]; omega
+        have h : Reach [⟨1,b,1⟩] ([b-1, 2] ++ List.replicate (n - b - 1) 1)
+            ([(b-1) + 2] ++ List.replicate (n - b - 1) 1) :=
+          reach_frame _ (reach_move [] (Local.nmerge (b-1) 2 hcc) (List.Perm.refl _) (Reach.refl _))
+        rw [show (b-1) + 2 = b + 1 from by omega] at h
+        rw [show n - (b-1) - 2 = n - b - 1 from by omega]
+        simpa using h
+      have hm2 := mergeUnitsHi 1 b 1 (n - b - 1) (b+1) (by omega)
+      rw [show (b+1) + (n - b - 1) = n from by omega] at hm2
+      exact reach_trans hg1 (reach_trans hg2 (reach_trans hm1 hm2))
+    · -- a = 1, b = 2: gather two [2]s, merge to [4], reel in
+      have hb2e : b = 2 := by omega
+      subst hb2e
+      have hg1 : Reach [⟨1,2,1⟩] (List.replicate n 1) (2 :: List.replicate (n - 2) 1) :=
+        gatherPrefix 1 2 1 2 n (by omega) (by omega) (by omega)
+      have hg2 : Reach [⟨1,2,1⟩] (2 :: List.replicate (n - 2) 1)
+          (2 :: 2 :: List.replicate (n - 4) 1) := by
+        have := reach_frame_left [2] (gatherPrefix 1 2 1 2 (n - 2) (by omega) (by omega) (by omega))
+        simpa [show n - 2 - 2 = n - 4 from by omega] using this
+      have hm1 : Reach [⟨1,2,1⟩] (2 :: 2 :: List.replicate (n - 4) 1)
+          (4 :: List.replicate (n - 4) 1) := by
+        have hcc : ∀ f ∈ ([⟨1,2,1⟩]:Config), ¬ ((f.a = 2 ∧ f.b = 2) ∨ (f.a = 2 ∧ f.b = 2)) := by
+          simp only [List.mem_singleton, forall_eq]; omega
+        have h : Reach [⟨1,2,1⟩] ([2, 2] ++ List.replicate (n - 4) 1)
+            ([4] ++ List.replicate (n - 4) 1) :=
+          reach_frame _ (reach_move [] (Local.nmerge 2 2 hcc) (List.Perm.refl _) (Reach.refl _))
+        simpa using h
+      have hm2 := mergeUnitsHi 1 2 1 (n - 4) 4 (by omega)
+      rw [show 4 + (n - 4) = n from by omega] at hm2
+      exact reach_trans hg1 (reach_trans hg2 (reach_trans hm1 hm2))
+
+/-- **Climb pump for `⟨a,b,1⟩`** (`b ≥ 2`): `[n] → [n+(a+b-1)]` for `n ≥ a+b+1`. -/
+theorem climb_c1 (a b : Nat) (ha1 : 1 ≤ a) (hb2 : 2 ≤ b) :
+    ∀ n, a + b + 1 ≤ n → Reach [⟨a,b,1⟩] [n] [n + (a + b - 1)] := by
+  intro n hn
+  have hsc := scatAll1 a b n (by omega)
+  -- fsplit one 1 → {a,b}
+  have hfs : Reach [⟨a,b,1⟩] (List.replicate n 1) ([a, b] ++ List.replicate (n-1) 1) := by
+    refine reach_move (List.replicate (n-1) 1) (Local.fsplit ⟨a,b,1⟩ (List.mem_singleton.2 rfl))
+      ?_ (Reach.refl _)
+    rw [repl_pull n (by omega)]; exact List.Perm.refl _
+  -- absorb one 1 into the a: merge {a,1} (safe: b ≥ 2)
+  have habs : Reach [⟨a,b,1⟩] ([a, b] ++ List.replicate (n-1) 1)
+      ([a + 1, b] ++ List.replicate (n-2) 1) := by
+    have hcc : ∀ f ∈ ([⟨a,b,1⟩]:Config), ¬ ((f.a = a ∧ f.b = 1) ∨ (f.a = 1 ∧ f.b = a)) := by
+      simp only [List.mem_singleton, forall_eq]; omega
+    refine reach_move ([b] ++ List.replicate (n-2) 1) (Local.nmerge a 1 hcc) ?_ ?_
+    · rw [show n - 1 = 1 + (n - 2) from by omega, ← repl_add]
+      rw [List.perm_iff_count]; intro x
+      simp [List.count_cons, List.count_append] <;> omega
+    · exact Reach.refl _
+  -- merge {a+1, b} (never the false pair)
+  have hm1 : Reach [⟨a,b,1⟩] ([a + 1, b] ++ List.replicate (n-2) 1)
+      ((a + 1 + b) :: List.replicate (n-2) 1) := by
+    have hcc : ∀ f ∈ ([⟨a,b,1⟩]:Config), ¬ ((f.a = a+1 ∧ f.b = b) ∨ (f.a = b ∧ f.b = a+1)) := by
+      simp only [List.mem_singleton, forall_eq]; omega
+    have h : Reach [⟨a,b,1⟩] ([a+1, b] ++ List.replicate (n-2) 1)
+        ([a+1+b] ++ List.replicate (n-2) 1) :=
+      reach_frame _ (reach_move [] (Local.nmerge (a+1) b hcc) (List.Perm.refl _) (Reach.refl _))
+    simpa using h
+  -- reel in the ones
+  have hm2 := mergeUnitsHi a b 1 (n-2) (a+1+b) (by omega)
+  rw [show (a+1+b) + (n-2) = n + (a + b - 1) from by omega] at hm2
+  exact reach_trans hsc (reach_trans hfs (reach_trans habs (reach_trans hm1 hm2)))
+
+/-- **Descend pump for `⟨a,b,1⟩`** (`b ≥ 2`): `[n+(a+b-1)] → [n]` for `n ≥ a+b+1`. -/
+theorem descend_c1 (a b : Nat) (ha1 : 1 ≤ a) (hb2 : 2 ≤ b) :
+    ∀ n, a + b + 1 ≤ n → Reach [⟨a,b,1⟩] [n + (a + b - 1)] [n] := by
+  intro n hn
+  have hsc := scatAll1 a b (n + (a + b - 1)) (by omega)
+  -- gather [a] then [b]
+  have hg1 : Reach [⟨a,b,1⟩] (List.replicate (n + (a + b - 1)) 1)
+      (a :: List.replicate (n + b - 1) 1) := by
+    have := gatherPrefix a b 1 a (n + (a + b - 1)) (by omega) (by omega) (by omega)
+    rwa [show n + (a + b - 1) - a = n + b - 1 from by omega] at this
+  have hg2 : Reach [⟨a,b,1⟩] (a :: List.replicate (n + b - 1) 1)
+      (a :: b :: List.replicate (n - 1) 1) := by
+    have := reach_frame_left [a] (gatherPrefix a b 1 b (n + b - 1) (by omega) (by omega) (by omega))
+    simpa [show n + b - 1 - b = n - 1 from by omega] using this
+  -- false-merge {a,b} → 1
+  have hfm : Reach [⟨a,b,1⟩] (a :: b :: List.replicate (n - 1) 1) (List.replicate n 1) := by
+    refine reach_move (List.replicate (n-1) 1) (Local.fmerge ⟨a,b,1⟩ (List.mem_singleton.2 rfl))
+      (List.Perm.refl _) ?_
+    rw [repl_pull n (by omega)]; exact Reach.refl _
+  exact reach_trans hsc (reach_trans hg1 (reach_trans hg2 (reach_trans hfm
+    (buildBall_c1 a b ha1 hb2 n hn))))
+
+/-- **Full sufficiency for `⟨a,b,1⟩`** (`a ≥ 1`, `b ≥ 2`): every `s,t ≥ M = a+b+1` with
+    `(a+b-1) ∣ (t−s)` are interreachable. -/
+theorem single_sufficiency_c1 (a b : Nat) (ha1 : 1 ≤ a) (hb2 : 2 ≤ b) :
+    ∀ s t, Mval [⟨a,b,1⟩] ≤ s → Mval [⟨a,b,1⟩] ≤ t →
+      gz [⟨a,b,1⟩] ∣ ((t : Int) - s) → Reach [⟨a,b,1⟩] [s] [t] := by
+  have hg : gnat [⟨a,b,1⟩] = a + b - 1 := gnat_dpos a b 1 (by omega)
+  have hM : Mval [⟨a,b,1⟩] = a + b + 1 := by
+    show Hnat [⟨a,b,1⟩] + 1 = a + b + 1; rw [Hnat_dpos a b 1 (by omega)]
+  have climb : ∀ n, Mval [⟨a,b,1⟩] ≤ n → Reach [⟨a,b,1⟩] [n] [n + gnat [⟨a,b,1⟩]] := by
+    intro n hn; rw [hg, hM] at *; exact climb_c1 a b ha1 hb2 n (by omega)
+  have descend : ∀ n, Mval [⟨a,b,1⟩] ≤ n → Reach [⟨a,b,1⟩] [n + gnat [⟨a,b,1⟩]] [n] := by
+    intro n hn; rw [hg, hM] at *; exact descend_c1 a b ha1 hb2 n (by omega)
+  intro s t hs ht hg'
+  exact sufficiency_of_pumps climb descend hs ht hg'
+
+/-- The `c=1` lie `2 + 3 = 1` is solvable above `M = 6`. -/
+theorem solvable_2_3_1 {s t : Nat} (hs : 6 ≤ s) (ht : 6 ≤ t)
+    (h : (4:Int) ∣ ((t:Int) - s)) : Reach [⟨2,3,1⟩] [s] [t] := by
+  refine single_sufficiency_c1 2 3 (by omega) (by omega) s t ?_ ?_ ?_
+  · have : Mval [⟨2,3,1⟩] = 6 := by decide
+    omega
+  · have : Mval [⟨2,3,1⟩] = 6 := by decide
+    omega
+  · have : gz [⟨2,3,1⟩] = 4 := by decide
+    rw [this]; exact h
+
+#print axioms YaStupid.single_sufficiency_c1
+#print axioms YaStupid.solvable_2_3_1
+
+end YaStupid
