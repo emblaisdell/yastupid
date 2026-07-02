@@ -43,11 +43,11 @@ ball of value $n$ may be split into $\lfloor n/2\rfloor$ and
 $\lceil n/2\rceil$, and two balls may be merged into their sum---except that
 the arithmetic is governed by a single \emph{false sum} $a+b=c$: the ball $c$
 splits only into $a$ and $b$, and the pair $\{a,b\}$ merges only into $c$.
-Writing $g=|a+b-c|$, $H=\max(a+b,c)$ and $M=H+1$, we prove that for
+Writing $g=|a+b-c|$ and $M=\max(a+b,c)+1$, we prove that for
 \emph{every} false sum $(a,b,c)$ with $a,b,c\ge 1$ and all
 $s,t\ge M$, the single ball $s$ can be transformed into the single ball $t$
-if and only if $g \mid t-s$; moreover the threshold $M=H+1$ cannot be lowered
-to $H$ in general.  The sufficiency proof is a taxonomy: a generic
+if and only if $g \mid t-s$; moreover the threshold $M$ cannot be lowered
+to $M-1$ in general.  The sufficiency proof is a taxonomy: a generic
 ``all-ones hub'' handles most parameters, but it provably breaks down on
 several degenerate families---the \emph{traps}, in which some ball values can
 never be reduced to units---each of which requires its own construction,
@@ -92,7 +92,7 @@ obvious congruence obstruction?
 Our main result answers both completely, for \emph{every} false sum.
 
 \begin{theorem}[Main; formally verified]\label{thm:main-intro}
-Let $a,b,c\ge 1$, let $g=|a+b-c|$, $H=\max(a+b,c)$ and $M=H+1$.  For all
+Let $a,b,c\ge 1$, let $g=|a+b-c|$ and $M=\max(a+b,c)+1$.  For all
 $s,t\ge M$,
 \[
 \ms{s} \reach \ms{t}
@@ -100,9 +100,10 @@ $s,t\ge M$,
 g \mid t-s .
 \]
 (When $g=0$, i.e.\ the ``false'' sum is true, the right-hand side reads
-$t=s$.)  Moreover, the threshold $M=H+1$ is optimal as a function of $H$: for
-the Classic configuration $9+10=21$ one has $H=21$, the pair $(21,23)$
-satisfies the congruence, and yet $\ms{21}\not\reach\ms{23}$.
+$t=s$.)  Moreover, the threshold $M$ is optimal: it cannot be lowered to
+$M-1$.  For the Classic configuration $9+10=21$ one has $M=22$, the pair
+$(21,23)=(M-1,M+1)$ satisfies the congruence, and yet
+$\ms{21}\not\reach\ms{23}$.
 \end{theorem}
 
 The forward implication is an invariant argument and holds far more
@@ -194,11 +195,11 @@ symmetric in $a\leftrightarrow b$, a fact we prove and use
 (Lemma~\ref{lem:swap}).
 
 \begin{definition}[Parameters]\label{def:params}
-Set $\delta=a+b-c\in\Z$, \ $g=|\delta|$, \ $H=\max(a+b,c)$, and $M=H+1$.
+Set $\delta=a+b-c\in\Z$, \ $g=|\delta|$, and $M=\max(a+b,c)+1$.
 \end{definition}
 
 \begin{example}
-Classic ($9+10=21$): $g=2$, $H=21$, $M=22$.  The false split lowers the
+Classic ($9+10=21$): $g=2$, $M=22$.  The false split lowers the
 total by $2$; the false merge raises it by $2$.  For $6+6=3$: $g=9$,
 $M=13$.  For $1+3=3$: $g=1$, $M=5$---so Theorem~\ref{thm:main-intro} asserts
 that above $5$ \emph{every} pair is solvable.  Table~\ref{tab:examples}
@@ -246,8 +247,8 @@ simultaneous false sums, with $g$ the gcd of the individual inaccuracies;
 only sufficiency is specific to a single lie.
 
 \begin{proposition}[Sharpness at Classic]\label{prop:sharp}
-For $\lie{9}{10}{21}$: \ $\ms{21}\not\reach\ms{23}$, although
-$21,23\ge H=21$ and $2\mid 23-21$.
+For $\lie{9}{10}{21}$ one has $M=22$: \ $\ms{21}\not\reach\ms{23}$, although
+$21,23\ge M-1=21$ and $2\mid 23-21$.
 \end{proposition}
 
 \begin{proof}
@@ -262,10 +263,10 @@ total, the state is exactly $\ms{9,10}$ and the result is exactly
 $\ms{21}$: good.  All other moves are normal and preserve the total $19$.
 \end{proof}
 
-Thus the guarantee of Theorem~\ref{thm:main-intro} fails at $H$ itself, and
-$M=H+1$ is the optimal uniform threshold expressible in terms of $H$.  (For
-particular false sums a smaller threshold may hold; we do not pursue the
-per-configuration optimum here.)
+Thus the guarantee of Theorem~\ref{thm:main-intro} fails at $M-1=\max(a+b,c)$
+itself, so $M$ is the optimal uniform threshold expressible in terms of
+$\max(a+b,c)$.  (For particular false sums a smaller threshold may hold; we do
+not pursue the per-configuration optimum here.)
 
 \section{Sufficiency I: reduction to two pumps}\label{sec:pumps}
 
@@ -624,11 +625,11 @@ arithmetic of Lemma~\ref{lem:powgap}.
 \item \textbf{Multiple lies.}  For a finite set of simultaneous false sums
 the congruence obstruction (with $g$ the gcd of the inaccuracies) is proved
 in the same formalization, and we conjecture the analogue of
-Theorem~\ref{thm:main} with $H$ the maximum of the individual $H$'s.
+Theorem~\ref{thm:main} with $M=\max_i\max(a_i+b_i,c_i)+1$.
 The interaction of several locked values and poisoned pairs makes the
 trap taxonomy considerably richer, and we leave it open.
-\item \textbf{Per-configuration thresholds.}  $M=H+1$ is optimal as a
-uniform function of $H$ (Proposition~\ref{prop:sharp}), but individual
+\item \textbf{Per-configuration thresholds.}  $M=\max(a+b,c)+1$ is optimal as
+a uniform function of $\max(a+b,c)$ (Proposition~\ref{prop:sharp}), but individual
 false sums can admit smaller thresholds; characterizing the exact minimum
 for each $(a,b,c)$ is open.
 \item \textbf{Beyond singletons.}  Our characterization concerns
