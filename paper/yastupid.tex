@@ -1,0 +1,653 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1.2in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{microtype}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,citecolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+\usepackage{xcolor}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\lie}[3]{\langle #1,#2,#3\rangle}
+\newcommand{\ms}[1]{\{#1\}}
+\newcommand{\reach}{\longrightarrow^{*}}
+\newcommand{\move}{\longrightarrow}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\Scat}{\mathsf{Scat}}
+
+\title{One False Sum:\\
+\large A complete, formally verified characterization of solvability\\
+in a splitting--merging game with a single arithmetic lie}
+\author{}
+\date{July 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+We study a one-player game on finite multisets of positive integers in which a
+ball of value $n$ may be split into $\lfloor n/2\rfloor$ and
+$\lceil n/2\rceil$, and two balls may be merged into their sum---except that
+the arithmetic is governed by a single \emph{false sum} $a+b=c$: the ball $c$
+splits only into $a$ and $b$, and the pair $\{a,b\}$ merges only into $c$.
+Writing $g=|a+b-c|$, $H=\max(a+b,c)$ and $M=H+1$, we prove that for
+\emph{every} false sum $(a,b,c)$ with $a,b,c\ge 1$ and all
+$s,t\ge M$, the single ball $s$ can be transformed into the single ball $t$
+if and only if $g \mid t-s$; moreover the threshold $M=H+1$ cannot be lowered
+to $H$ in general.  The sufficiency proof is a taxonomy: a generic
+``all-ones hub'' handles most parameters, but it provably breaks down on
+several degenerate families---the \emph{traps}, in which some ball values can
+never be reduced to units---each of which requires its own construction,
+including one eleven-move gadget for the single most pathological shape
+$\lie{c}{2c}{c}$.  A dichotomy lemma (every value $v\ge c$ is either of the
+trap form $2^k c$ or ``scatterable'') glues the taxonomy into a complete case
+analysis.  All results, from the move semantics up to the final
+characterization, are formally verified in Lean~4 (core library only), in
+roughly $7{,}500$ lines comprising $328$ theorems with no unproven
+assumptions.
+\end{abstract}
+
+\section{Introduction}
+
+Imagine a puzzle in which you are handed a single ball labelled with a
+positive integer and asked to produce a single ball with a different label.
+Two operations are available: \emph{splitting} a ball into two balls whose
+labels are the (integer) halves of the original, and \emph{merging} two balls
+into one whose label is their sum.  Splitting and merging are exact inverses
+of one another in spirit, and with true arithmetic the game is
+uninteresting: the total is invariant, so a single ball $s$ can become a
+single ball $t$ only when $s=t$.
+
+The game becomes interesting when the arithmetic is wrong.  Fix a single
+\emph{false sum}: an assertion $a+b=c$ where possibly $a+b\ne c$.  The player
+is committed to this belief.\footnote{The game we formalize, \emph{Ya
+Stupid}, takes its name from a 2014 viral video in which a child, asked
+``what's nine plus ten?'', confidently answers ``twenty-one.''  The false sum
+$9+10=21$ is accordingly called the \emph{Classic} configuration below.}
+Consequently the ball $c$ no longer splits into its halves---it splits into
+$a$ and $b$---and the pair $\{a,b\}$ no longer merges to $a+b$ but to $c$.
+Every false move changes the total by $\pm(a+b-c)$, so the total is no longer
+invariant and genuine transformations $s \rightsquigarrow t$ with $s \neq t$
+become possible.  Two natural questions arise:
+
+\begin{enumerate}
+\item[(Q1)] Exactly which pairs $(s,t)$ are solvable?
+\item[(Q2)] Is there a threshold above which the answer depends only on the
+obvious congruence obstruction?
+\end{enumerate}
+
+Our main result answers both completely, for \emph{every} false sum.
+
+\begin{theorem}[Main; formally verified]\label{thm:main-intro}
+Let $a,b,c\ge 1$, let $g=|a+b-c|$, $H=\max(a+b,c)$ and $M=H+1$.  For all
+$s,t\ge M$,
+\[
+\ms{s} \reach \ms{t}
+\quad\Longleftrightarrow\quad
+g \mid t-s .
+\]
+(When $g=0$, i.e.\ the ``false'' sum is true, the right-hand side reads
+$t=s$.)  Moreover, the threshold $M=H+1$ is optimal as a function of $H$: for
+the Classic configuration $9+10=21$ one has $H=21$, the pair $(21,23)$
+satisfies the congruence, and yet $\ms{21}\not\reach\ms{23}$.
+\end{theorem}
+
+The forward implication is an invariant argument and holds far more
+generally (for any finite set of simultaneous false sums, with $g$ their
+gcd); the content of the theorem is the converse, \emph{sufficiency}.
+
+What makes sufficiency interesting is that the natural proof strategy is
+\emph{false}.  The natural strategy---call it the \emph{all-ones hub}---is to
+scatter the ball $s$ into $s$ unit balls, adjust the size of the pile of
+units by firing false moves, and then rebuild the target $t$.  For many
+parameters this works, and \S\ref{sec:hub} makes it precise.  But the game
+contains genuine \emph{traps}: configurations in which certain balls can
+never be reduced to units at all.  The simplest is $2+2=2$, where a lone
+ball $2$ only ever produces multisets of $2$'s (its only split is the false
+one, $2\to\{2,2\}$, and two $2$'s only merge falsely back to a $2$).  More
+elaborately, when both legs $a,b$ are of the form $c\cdot 2^k$ (as in
+$6+6=3$ or $3+6=3$), every route from a large ball down towards units jams on
+\emph{locked} copies of $c$, which refuse to halve.  Each trap family needs
+its own escape:
+
+\begin{itemize}
+\item for the traps with $c\ge 3$, a hub built on \emph{copies of $c$}
+rather than units, driven by a peeling recursion
+(\S\ref{sec:traps});
+\item for the single most pathological shape $\lie{c}{2c}{c}$
+(``$c+2c=c$''), where even the peeling recursion jams at one specific ball
+value, a bespoke eleven-move excursion that temporarily doubles the total
+(\S\ref{sec:peel4c});
+\item for $c=2$, a hub built on copies of $2$, with odd values manufactured
+by \emph{splitting} even balls rather than assembling units
+(\S\ref{sec:smallc});
+\item for the doubly degenerate family $1+c=c$, in which the na\"ive
+peel-off-a-unit move is unavailable in principle, a
+lose-exactly-one recursion (\S\ref{sec:onecc});
+\item for $c=1$, an unobstructed hub (\S\ref{sec:smallc}).
+\end{itemize}
+
+A short \emph{dichotomy lemma} (Lemma~\ref{lem:dichotomy}: every $v\ge c$ is
+either exactly $2^kc$, or ``scatterable'') proves that this taxonomy is
+exhaustive, and a final assembly theorem dispatches every $(a,b,c)$ to its
+family.
+
+\paragraph{Formal verification.}
+Every result in this paper---the move semantics, the invariant, the
+sharpness witness, each family construction, the dichotomy, and the final
+characterization---has been formally verified in the Lean~4 proof assistant
+\cite{lean4}, using only Lean's core library (no \textsf{Mathlib}).  The
+development is a single file of $7{,}462$ lines containing $328$ theorems;
+it compiles in under a minute and depends only on the three standard
+axioms of Lean's classical logic (propositional extensionality, choice,
+quotient soundness)---in particular there are no unproven assumptions
+(\texttt{sorry}-free).  The statements quoted in this paper correspond to
+the Lean theorems named in \S\ref{sec:mech}.  In the mathematical sections
+below we therefore favour explaining the \emph{constructions} over spelling
+out routine bookkeeping, which the formalization pins down exactly.
+
+\paragraph{A caveat on independent evidence.}
+During the development, bounded breadth-first searches over the state space
+were used to hunt for counterexamples and to discover candidate move
+sequences.  No counterexample to Theorem~\ref{thm:main-intro} was ever
+found; all search results were subsequently superseded by machine-checked
+proofs.  Claims below of the form ``$X$ is unreachable'' are proved
+(Proposition~\ref{prop:sharp}); claims of the form ``the na\"ive strategy
+fails'' are proved where stated and otherwise serve only as motivation.
+
+\section{The game}\label{sec:model}
+
+\begin{definition}[States and moves]\label{def:moves}
+Fix $a,b,c\ge 1$ (the \emph{false sum}, written $\lie{a}{b}{c}$).  A
+\emph{state} is a finite multiset of positive integers, called
+\emph{balls}.  The legal moves are:
+\begin{itemize}
+\item \textbf{normal split}: replace one ball $n$ with $n\ge 2$ and
+$n\ne c$ by the two balls $\lfloor n/2\rfloor,\ \lceil n/2\rceil$;
+\item \textbf{false split}: replace one ball of value $c$ by the two balls
+$a,\ b$;
+\item \textbf{normal merge}: replace two balls $x,y$ with
+$\{x,y\}\ne\{a,b\}$ (as multisets) by the ball $x+y$;
+\item \textbf{false merge}: replace the two balls $a,\ b$ by the ball $c$.
+\end{itemize}
+We write $S\move T$ if $T$ is obtained from $S$ by one move, and $\reach$
+for the reflexive--transitive closure.
+\end{definition}
+
+The player's false belief is \emph{forced}: the ball $c$ cannot be halved
+(its only split is the false one), and the pair $\{a,b\}$ cannot merge to
+$a+b$ (its only merge is the false one).  Note the model is manifestly
+symmetric in $a\leftrightarrow b$, a fact we prove and use
+(Lemma~\ref{lem:swap}).
+
+\begin{definition}[Parameters]\label{def:params}
+Set $\delta=a+b-c\in\Z$, \ $g=|\delta|$, \ $H=\max(a+b,c)$, and $M=H+1$.
+\end{definition}
+
+\begin{example}
+Classic ($9+10=21$): $g=2$, $H=21$, $M=22$.  The false split lowers the
+total by $2$; the false merge raises it by $2$.  For $6+6=3$: $g=9$,
+$M=13$.  For $1+3=3$: $g=1$, $M=5$---so Theorem~\ref{thm:main-intro} asserts
+that above $5$ \emph{every} pair is solvable.  Table~\ref{tab:examples}
+lists more.
+\end{example}
+
+\begin{table}[t]
+\centering
+\begin{tabular}{lccl}
+\toprule
+false sum & $g$ & $M$ & character \\
+\midrule
+$9+10=21$ & $2$ & $22$ & Classic; deficient ($a+b<c$) \\
+$3+3=5$ & $1$ & $7$ & excessive, both legs $<c$ \\
+$8+9=4$ & $13$ & $18$ & one leg of the form $c\cdot 2^k$ \\
+$15+15=4$ & $26$ & $31$ & large legs, not powers \\
+$6+6=3$ & $9$ & $13$ & trap: $a=b=2c$ \\
+$3+6=3$ & $6$ & $10$ & the pathological $\lie{c}{2c}{c}$ \\
+$2+2=2$ & $2$ & $5$ & trap: $a=b=c$ \\
+$4+6=2$ & $8$ & $11$ & $c=2$, both legs even \\
+$1+3=3$ & $1$ & $5$ & doubly degenerate $\lie{1}{c}{c}$ \\
+$2+3=1$ & $4$ & $6$ & $c=1$ \\
+\bottomrule
+\end{tabular}
+\caption{Sample false sums with their inaccuracy $g$ and threshold $M$.
+Each is solvable for all $s,t\ge M$ with $g\mid t-s$
+(Theorem~\ref{thm:main-intro}).}\label{tab:examples}
+\end{table}
+
+\section{Necessity and sharpness}\label{sec:necessity}
+
+\begin{proposition}[Necessity]\label{prop:necessity}
+If $\ms{s}\reach\ms{t}$ then $g\mid t-s$.
+\end{proposition}
+
+\begin{proof}
+Normal moves preserve the total of a state; the false split changes it by
+$(a+b)-c=\delta$ and the false merge by $-\delta$.  Hence the total is
+constant modulo $g$ along any play, and the totals of the two singleton
+states are $s$ and $t$.
+\end{proof}
+
+The formalization proves this for an arbitrary finite \emph{set} of
+simultaneous false sums, with $g$ the gcd of the individual inaccuracies;
+only sufficiency is specific to a single lie.
+
+\begin{proposition}[Sharpness at Classic]\label{prop:sharp}
+For $\lie{9}{10}{21}$: \ $\ms{21}\not\reach\ms{23}$, although
+$21,23\ge H=21$ and $2\mid 23-21$.
+\end{proposition}
+
+\begin{proof}
+Call a state \emph{good} if all its balls are positive and either its total
+is $19$ or it is exactly $\ms{21}$.  We claim goodness is preserved by every
+move; since $\ms{23}$ is not good, this proves the proposition.  From
+$\ms{21}$, the only available move is the false split ($21=c$ cannot halve;
+nothing can merge), yielding $\ms{9,10}$ of total $19$: good.  From a good
+state of total $19$: a false split would require a ball $21>19$, impossible;
+a false merge requires balls $9$ and $10$, and since $9+10=19$ is the whole
+total, the state is exactly $\ms{9,10}$ and the result is exactly
+$\ms{21}$: good.  All other moves are normal and preserve the total $19$.
+\end{proof}
+
+Thus the guarantee of Theorem~\ref{thm:main-intro} fails at $H$ itself, and
+$M=H+1$ is the optimal uniform threshold expressible in terms of $H$.  (For
+particular false sums a smaller threshold may hold; we do not pursue the
+per-configuration optimum here.)
+
+\section{Sufficiency I: reduction to two pumps}\label{sec:pumps}
+
+Everything below serves the converse direction.  The first step is a
+routine reduction.
+
+\begin{lemma}[Pump reduction]\label{lem:pumps}
+Suppose the two \emph{pumps} hold for a given $\lie{a}{b}{c}$:
+\[
+\text{(climb)}\quad \forall n\ge M:\ \ms{n}\reach\ms{n+g},
+\qquad
+\text{(descend)}\quad \forall n\ge M:\ \ms{n+g}\reach\ms{n}.
+\]
+Then $\ms{s}\reach\ms{t}$ for all $s,t\ge M$ with $g\mid t-s$.
+\end{lemma}
+
+\begin{proof}
+Iterate the appropriate pump $|t-s|/g$ times; every intermediate value stays
+$\ge M$.
+\end{proof}
+
+Note that reachability is \emph{not} symmetric move-by-move (a normal merge
+$\{3,7\}\to 10$ reverses only via a longer route), so climb and descend
+genuinely require separate constructions.  The remainder of the paper
+discharges the two pumps for every $(a,b,c)$, by cases.
+
+\section{Sufficiency II: the all-ones hub}\label{sec:hub}
+
+Throughout this section, ``units'' are balls of value $1$.  The hub
+strategy for $\ms{n}\reach\ms{n\pm g}$ is:
+\begin{enumerate}
+\item \emph{scatter} $\ms{n}$ into the pile of units $1^{n}$;
+\item change the pile size by $\pm g$ using one false move
+(\emph{gain}: create a ball $c$, false-split it into $\{a,b\}$, re-scatter,
+for $a+b>c$; \emph{lose}: assemble $a$ and $b$, false-merge to $c$,
+re-scatter; roles swap when $a+b<c$);
+\item \emph{rebuild} the single ball from the pile.
+\end{enumerate}
+Each step must dodge the two special values: a ball $c$ is \emph{locked}
+(it cannot halve), and the pair $\{a,b\}$ is \emph{poisoned} (it merges only
+falsely).  The precise dodges depend on the parameters.
+
+\subsection{The deficient case \texorpdfstring{$a+b<c$}{a+b<c}}
+
+Here $a,b<c$, and every value below $c$ is \emph{free}: its halves stay
+below $c$, so it scatters to units by repeated normal splits, and units
+re-assemble into any value $k\le\max(a,b)$ (merging a unit onto $j<k$
+can only form the poisoned pair if $\{1,j\}=\{a,b\}$, which forces
+$\max(a,b)=j<k\le \max(a,b)$---absurd).  The climb pump on the window
+$n\in[c+1,\,2c-2]$ is then: split $n$ into two sub-$c$ halves, scatter both,
+assemble $a$ and $b$, false-merge to $c$ ($+g$), and reel the remaining
+units onto the $c$ (safe: $c>\max(a,b)$, so $\{x,1\}$ with $x \geq c$ is
+never poisoned).  The three boundary values $n\in\{2c-1,2c,2c+1\}$, whose
+halves collide with the locked $c$, are handled by short explicit routes,
+and a halving recursion (split, pump the half, re-merge) reduces every
+$n\ge M$ to the window.  The descend pump is dual (false-split a freshly
+built $c$).
+
+Two edges of this case need extra care, both caused by unit legs.  If
+$a=1$ the pair $\{1,b\}$ is poisoned, so re-assembly must \emph{skip} the
+value $b+1$: build $b$ and a separate $2$, merge them to $b+2$ (legal:
+$\{b,2\}$ is never $\{1,b\}$), and continue.  If $a=b=1$, units cannot merge
+\emph{at all} ($\{1,1\}$ is the false pair, merging to $c$!); the
+construction instead maintains \emph{2-seeds}---balls of value $2$ produced
+by splitting odd values---and grows from those.
+
+\subsection{The excessive case with small legs}
+
+For $a+b>c$ and both legs $<c$ the same hub runs with the roles of the
+false moves exchanged (the false \emph{split} now gains $g$).  This case
+includes every ``cluster structure'' of the boundary values and is fully
+generic; the formal statement covers all $2\le a,b<c<a+b$.
+
+When exactly one leg is small ($2\le a<c\le b$, say), scattering the big leg
+may jam on locked $c$'s, and the following device---used pervasively from
+here on---resolves it.
+
+\begin{lemma}[Reservoir bumping]\label{lem:bump}
+Let $c\ge 3$ and suppose $\{1,c\}\ne\{a,b\}$.  From any state containing a
+ball $v\ge 1$ and $K\ge 1$ units, one can reach the state with $v+K$
+units.
+\end{lemma}
+
+\begin{proof}[Proof sketch]
+Halve $v$ repeatedly.  Whenever a locked $c$ appears, \emph{bump} it: merge
+one unit onto it (legal by hypothesis), obtaining $c+1$, which is unlocked
+and halves into two values $\le\lceil (c+1)/2\rceil\le c-1$, both free to
+continue.  The unit invested is recovered because all fragments eventually
+reach $1$.  A strong induction on the multiset of values makes this
+terminate.
+\end{proof}
+
+Thus a single unit ``unlocks'' everything---the problem is only ever
+\emph{obtaining the first units}, which is exactly what the trap families
+prevent.
+
+\section{Scatterability, and the trap dichotomy}\label{sec:scat}
+
+For $a+b>c$ with both legs $\ge c$ we need to know which single balls can
+produce units on their own.
+
+\begin{definition}[Scatterable values]\label{def:scat}
+For $c\ge 3$, let $\Scat_c\subseteq\N$ be the least set such that:
+$v\in\Scat_c$ whenever $c<v<2c$; and $v\in\Scat_c$ whenever $v\ge 2c$ and
+($\lfloor v/2\rfloor\in\Scat_c$ or $\lceil v/2\rceil\in\Scat_c$).
+\end{definition}
+
+A value $c<v<2c$ splits into a half $<c$ (which scatters freely into a
+reservoir of units) plus a remainder which is then bumped
+(Lemma~\ref{lem:bump}); a larger scatterable value halves towards the
+window.  Hence, under the safety hypothesis of Lemma~\ref{lem:bump}, every
+$v\in\Scat_c$ satisfies $\ms{v}\reach 1^{v}$ on its own.  The values
+\emph{not} in $\Scat_c$ are precisely characterized:
+
+\begin{lemma}[Dichotomy]\label{lem:dichotomy}
+Let $c\ge 3$.  Every $v\ge c$ satisfies: $v=2^k c$ for some $k\ge 0$, or
+$v\in\Scat_c$.
+\end{lemma}
+
+\begin{proof}
+Strong induction on $v$.  If $c\le v<2c$: either $v=c=2^0c$, or $v$ is in
+the window.  If $v\ge 2c$ is even, its two halves equal $v/2\ge c$; by
+induction $v/2$ is a power multiple (making $v$ one) or scatterable (making
+$v$ scatterable).  If $v\ge 2c$ is odd, its halves are consecutive integers
+$f,f+1\ge c$; they cannot \emph{both} be of the form $2^ic$, since
+$2^jc-2^ic=1$ would force $c\mid 1$.  Apply induction to a half that is not
+a power multiple: it is scatterable, hence so is $v$.
+\end{proof}
+
+Consequently, if at least one leg is not of the form $2^kc$, that leg
+scatters on its own; a false split $c\to\{a,b\}$ then converts any locked
+$c$ into a scatterable pile, every value scatters, and the hub closes the
+configuration.  (This subsumes, in one stroke, all ``bands'' of leg sizes.)
+What remains is exactly:
+
+\begin{center}
+\emph{both legs of the form $2^kc$}\qquad and\qquad
+\emph{the small targets $c\in\{1,2\}$ and unit legs.}
+\end{center}
+
+\section{Sufficiency III: the traps}\label{sec:traps}
+
+Let now $a=2^pc$ and $b=2^qc$, $c\ge 3$.  These are genuine traps for the
+hub: for instance in $\lie{2}{2}{2}$ a lone ball $2$ generates only
+multisets of $2$'s (its only split is $2\to\{2,2\}$ and two $2$'s merge
+only falsely back to $2$), and the analogous $c$-multiple phenomena occur
+for all these families.  We do not need any unreachability statement,
+however; we simply replace the commodity: \emph{hub on copies of $c$
+instead of units}.
+
+\begin{lemma}[Peeling]\label{lem:peel}
+Let $a=2^pc$, $b=2^qc$, $c\ge 2$, and suppose $\{a,b\}\ne\{c,2c\}$.  Then
+for every $v\ge c+1$:\ \ $\ms{v}\reach\ms{c,\,v-c}$.
+\end{lemma}
+
+\begin{proof}[Proof sketch]
+Strong induction.  For $v\le 2c-2$ both halves of $v$ are $<c$, hence free:
+scatter everything to units and re-assemble $c$ and $v-c$ (all merges among
+sub-$c$ values and units are unpoisoned, since $a,b\ge c$).  The boundary
+values $2c-1,2c,2c+1$ split directly into $\{c-1,c\},\{c,c\},\{c,c+1\}$.
+For $v\ge 2c+2$: split $v$, peel a $c$ off the lower half by induction, and
+re-merge the two leftovers $\lfloor v/2\rfloor-c$ and $\lceil v/2\rceil$.
+This merge is poisoned only if
+$\{\lfloor v/2\rfloor-c,\lceil v/2\rceil\}=\{a,b\}$, which forces
+$|a-b|\in\{c,c+1\}$.  For legs $2^pc\ne 2^qc$ the gap $|a-b|$ is a nonzero
+multiple of $c$, so only $|a-b|=c$ is possible, and $2^q-2^p=1$ then forces
+$(p,q)=(0,1)$ (Lemma~\ref{lem:powgap}): that is, $\{a,b\}=\{c,2c\}$,
+excluded by hypothesis.
+\end{proof}
+
+Given peeling, the pumps are short.  \emph{Climb}: peel one $c$ off
+$\ms{n}$, false-split it into $\{a,b\}$ ($+g$), and merge everything back
+(both merges avoid the poisoned pair because the accumulating ball exceeds
+$b$).  \emph{Descend}: peel $2^p+2^q$ copies of $c$ off $\ms{n+g}$, rebuild
+the two legs from the copies, false-merge $\{a,b\}\to c$ ($-g$), and merge
+back.  Rebuilding a leg $2^kc$ from $2^k$ copies of $c$ uses \emph{binary
+doubling}, $\ms{x,x}\to\ms{2x}$, which can never hit the poisoned pair when
+$a\ne b$; when $a=b$ (so $p=q\ge 1$) one instead merges copies
+sequentially, $\ms{c,jc}\to\ms{(j+1)c}$, unpoisoned since $jc<a$ and
+$c\neq a$.  The diagonal $a=b=c$ is simplest of all: climb peels one $c$
+and false-splits it; descend peels two and false-merges them.
+
+\subsection{The pathological shape \texorpdfstring{$\lie{c}{2c}{c}$}{(c,2c,c)}}
+\label{sec:peel4c}
+
+One shape survives the analysis above: $a=c$, $b=2c$ (``$c+2c=c$'', e.g.\
+$3+6=3$), where the peeling recursion of Lemma~\ref{lem:peel} jams, at
+exactly one ball value.  At $v=4c$ the split gives $\{2c,2c\}$, peeling a
+$c$ off one half leaves $\{c,2c\}$---precisely the poisoned pair---and no
+local reordering avoids it.  The escape is an eleven-move excursion that
+climbs to total $8c$, forges the otherwise unobtainable ball $3c$ by
+splitting a $6c$, and rides two false merges back down:
+\[
+\begin{array}{r@{\;}c@{\;}l@{\qquad}ll}
+\ms{4c} &\move& \ms{2c,2c} & \text{split $4c$} & \text{(total $4c$)}\\
+        &\move& \ms{c,c,2c} & \text{split $2c$} \\
+        &\move& \ms{c,c,2c,2c} & \text{false split } c\to\{c,2c\} & (+g) \\
+        &\move& \ms{c,c,2c,2c,2c} & \text{false split } c\to\{c,2c\} & (+g)\ \text{(total $8c$)} \\
+        &\move& \ms{c,c,2c,4c} & \text{merge }\{2c,2c\} \\
+        &\move& \ms{c,c,6c} & \text{merge }\{2c,4c\} \\
+        &\move& \ms{c,c,3c,3c} & \text{split } 6c \\
+        &\move& \ms{c,3c,4c} & \text{merge }\{c,3c\} \\
+        &\move& \ms{c,2c,2c,3c} & \text{split } 4c \\
+        &\move& \ms{c,2c,3c} & \text{false merge }\{c,2c\}\to c & (-g) \\
+        &\move& \ms{c,3c} & \text{false merge }\{c,2c\}\to c & (-g)\ \text{(total $4c$)}
+\end{array}
+\]
+With this single gadget grafted in at $v=4c$, the peeling recursion---and
+with it both pumps---goes through for $\lie{c}{2c}{c}$, for every $c\ge 2$.
+
+\subsection{The doubly degenerate family \texorpdfstring{$\lie{1}{c}{c}$}{(1,c,c)}}
+\label{sec:onecc}
+
+The false sum $1+c=c$ (any $c\ge2$; $g=1$) is a trap of a different kind:
+$a=1$ makes the pair $\{1,c\}$ poisoned, so the ubiquitous ``merge a unit
+onto a locked $c$'' bump of Lemma~\ref{lem:bump} is illegal, and the ball
+$c$ regenerates under its own false split ($c\to\{1,c\}$).  The climb pump
+is still easy (peel a $c$---Lemma~\ref{lem:peel} applies, its recursion
+never jams here---false-split it, and re-merge, for a net $+1$).  The
+descend pump must \emph{lose exactly one} from $\ms{n+1}$, and the
+construction is a recursion we call \textsf{loseOne}: peel copies of $c$
+off the ball until the remainder drops below $c$, scatter the (free)
+remainder into units, ride \emph{one} false merge $\{1,c\}\to c$
+(erasing a single unit, $-1$), and re-assemble---the re-assembly dodging
+$\{1,c\}$ throughout because the accumulated $c$-copies merge with each
+other and with sub-$c$ values only.  One divisibility wrinkle remains: if
+$c\mid n+1$ the peeling bottoms out with no remainder at all (an all-$c$'s
+pile).  The fix is to \emph{overshoot}: climb once more to $n+2\equiv
+1\pmod c$, peel down to the remainder $c+1$, scatter it, and ride
+\emph{two} false merges.  For $c=2$ this last route needs units from a pile
+of $2$'s, obtained not by false-splitting (which regenerates) but by the
+\emph{odd-ball core}: merge three $2$'s into $6$, split $6\to\{3,3\}$, and
+split each $3\to\{1,2\}$---manufacturing two units by \emph{normal} moves
+alone.
+
+\section{Sufficiency IV: the small targets \texorpdfstring{$c=1$ and $c=2$}{c=1 and c=2}}
+\label{sec:smallc}
+
+\paragraph{$c=1$.}
+Nothing is ever locked: normal splitting requires $n\ge2\ne c$, so every
+ball halves freely, and only the poisoned pair $\{a,b\}$ needs dodging.
+The hub runs essentially unobstructed; the one point of care is that for
+$a=1$ the re-assembly must skip the poisoned $\{1,b\}$ exactly as in the
+deficient case (build $b-1$ and a spare $2$, or two $2$'s when $b=2$).
+
+\paragraph{$c=2$.}
+Here units are a scarce resource: the ball $2$ is locked (it false-splits
+into $\{a,b\}$), so an even ball can decompose into $2$'s but no further.
+The construction hubs on \emph{copies of $2$}, with a two-route peeling
+lemma ($\ms{v}\reach\ms{2,v-2}$ for $v\ge3$: when the standard recursion
+would produce the poisoned pair, peel off the \emph{other} half, whose
+residue differs by at most one and is therefore safe), and rebuilds legs
+from $2$'s.  Odd legs are manufactured by \emph{splitting} an even ball
+($\ms{2,2,2}\to\ms{6}\to\ms{3,3}\to\ms{1,2,3}$, a gadget that also yields a
+spare unit and a spare $2$, both of which are absorbed harmlessly).  The
+analysis splits into the four parity classes of $(a,b)$, plus the
+degenerate configurations where a leg equals $2$ (then $a=c$, and every
+$\{x,2\}$ with $x=b$ is poisoned) or equals $1$; each is closed by a
+variant of the same two devices.  We spare the reader the case ledger---the
+formalization contains ten theorems whose union is: \emph{every
+$\lie{a}{b}{2}$ with $a+b>2$ satisfies both pumps.}
+
+\section{The assembly}\label{sec:assembly}
+
+Three glue facts combine the families into a single statement.
+
+\begin{lemma}[Swap]\label{lem:swap}
+Reachability, $g$, and $M$ are invariant under $\lie{a}{b}{c}\mapsto
+\lie{b}{a}{c}$.
+\end{lemma}
+
+\begin{lemma}[Power gap]\label{lem:powgap}
+If $2^q=2^p+1$ then $p=0$ and $q=1$.  Consequently, for legs $a=2^pc\ne
+b=2^qc$: \ $b=a+c$ forces $\{a,b\}=\{c,2c\}$, and $b=a+c+1$ is impossible
+for $c\ge2$ (it would give $c\mid 1$).
+\end{lemma}
+
+\begin{theorem}[Characterization; formally verified]\label{thm:main}
+For all $a,b,c\ge1$ and all $s,t\ge M$:
+\[
+\ms{s}\reach\ms{t}\iff g\mid t-s.
+\]
+\end{theorem}
+
+\begin{proof}[Proof (assembly)]
+Necessity is Proposition~\ref{prop:necessity}.  For sufficiency, by
+Lemma~\ref{lem:swap} assume $a\le b$ and dispatch:
+if $a+b=c$, then $g=0$ and $t=s$.  If $a+b<c$: the deficient hub
+(\S\ref{sec:hub}), in its three variants ($2\le a$; $a=1<b$; $a=b=1$).  If
+$a+b>c$: for $c=1$ and $c=2$, \S\ref{sec:smallc}; for $c\ge3$ with $a=1$,
+either $b>c$ (unit-leg hub, a bumping variant) or $b=c$
+(\S\ref{sec:onecc}); for $2\le a,b<c$, the excessive hub; for $a<c\le b$,
+the small-leg bootstrap; and for $c\le a\le b$, apply
+Lemma~\ref{lem:dichotomy} to both legs: if either is scatterable, the hub
+closes it (\S\ref{sec:scat}); otherwise both are powers $2^pc,2^qc$ and the
+trap constructions apply---the diagonal $p=q=0$, the equal case $p=q\ge1$,
+the shape $\{c,2c\}$ (via \S\ref{sec:peel4c}, whose applicability is
+exactly delimited by Lemma~\ref{lem:powgap}), and the generic
+$p\ne q$ (Lemma~\ref{lem:peel}).  Every branch discharges both pumps, and
+Lemma~\ref{lem:pumps} concludes.
+\end{proof}
+
+\section{The formalization}\label{sec:mech}
+
+The entire development is verified in Lean~4 (v4.31.0) \cite{lean4} using
+only the core library---no \textsf{Mathlib}---in a single file
+(\texttt{lean/YaStupid.lean}, $7{,}462$ lines, $328$ theorems) in the
+repository accompanying this paper.\footnote{\url{https://github.com/emblaisdell/yastupid}}
+States are lists of naturals quotiented by permutation at the level of the
+step relation; the four moves of Definition~\ref{def:moves} are an
+inductive family \texttt{Local}, one step applies a \texttt{Local} move to
+a sub-multiset (\texttt{Step}), and \texttt{Reach} is its
+reflexive--transitive closure.  The headline statements are:
+
+\begin{center}
+\small
+\begin{tabular}{ll}
+\toprule
+paper & Lean theorem \\
+\midrule
+Theorem~\ref{thm:main} ($\Leftarrow$, all $a,b,c$) & \texttt{single\_sufficiency\_all} \\
+Theorem~\ref{thm:main} (iff form) & \texttt{single\_characterization} \\
+Proposition~\ref{prop:necessity} (any \# of lies) & \texttt{reach\_congr} \\
+Proposition~\ref{prop:sharp} & \texttt{classic\_trap} \\
+Lemma~\ref{lem:pumps} & \texttt{sufficiency\_of\_pumps} \\
+Lemma~\ref{lem:dichotomy} & \texttt{pow\_or\_scat} \\
+Lemma~\ref{lem:peel} & \texttt{peelcG} \\
+\S\ref{sec:peel4c} gadget & \texttt{peel4c} \\
+\S\ref{sec:onecc} recursion & \texttt{loseOne} \\
+Lemma~\ref{lem:swap} & \texttt{reach\_swap}, \texttt{suff\_swap} \\
+Lemma~\ref{lem:powgap} & \texttt{pow2\_eq\_succ} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The file compiles in about $40$ seconds and every theorem is checked (via
+\texttt{\#print axioms}) to depend only on Lean's three standard classical
+axioms \texttt{propext}, \texttt{Classical.choice}, \texttt{Quot.sound}; in
+particular the development is free of \texttt{sorry}.  Beyond the master
+theorems, the file contains machine-checked closed-form corollaries for the
+concrete false sums of Table~\ref{tab:examples} (e.g.\
+\texttt{solvable\_6\_6\_3}: all $s,t\ge13$ with $9\mid t-s$ are
+interreachable under $6+6=3$).
+
+Formalization was not an afterthought: several ``obvious'' claims failed
+under mechanization and reshaped the mathematics.  The all-ones hub was
+first believed to work whenever the pumps could bridge $g$-gaps; the trap
+families refuted this.  The peeling recursion was first stated without the
+$\{c,2c\}$ exclusion; Lean's unprovable goal at the re-merge step is what
+isolated the pathological shape of \S\ref{sec:peel4c} and the exact
+arithmetic of Lemma~\ref{lem:powgap}.
+
+\section{Concluding remarks}\label{sec:conclusion}
+
+\begin{itemize}
+\item \textbf{Multiple lies.}  For a finite set of simultaneous false sums
+the congruence obstruction (with $g$ the gcd of the inaccuracies) is proved
+in the same formalization, and we conjecture the analogue of
+Theorem~\ref{thm:main} with $H$ the maximum of the individual $H$'s.
+The interaction of several locked values and poisoned pairs makes the
+trap taxonomy considerably richer, and we leave it open.
+\item \textbf{Per-configuration thresholds.}  $M=H+1$ is optimal as a
+uniform function of $H$ (Proposition~\ref{prop:sharp}), but individual
+false sums can admit smaller thresholds; characterizing the exact minimum
+for each $(a,b,c)$ is open.
+\item \textbf{Beyond singletons.}  Our characterization concerns
+single-ball endpoints.  General multiset-to-multiset reachability adds a
+second obstruction (the number of balls interacts with the totals) and
+appears substantially harder.
+\end{itemize}
+
+\subsection*{Acknowledgements}
+The move sequences underlying several constructions were first located by
+bounded breadth-first search before being generalized and verified; we
+thank the machine for its patience.
+
+\begin{thebibliography}{1}
+\bibitem{lean4}
+L.~de~Moura and S.~Ullrich.
+\newblock The {Lean} 4 theorem prover and programming language.
+\newblock In \emph{Automated Deduction -- CADE 28}, LNCS 12699, pp.~625--635.
+Springer, 2021.
+\end{thebibliography}
+
+\end{document}
