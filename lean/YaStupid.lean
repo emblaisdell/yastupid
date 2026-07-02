@@ -6693,7 +6693,7 @@ namespace YaStupid
     `c ∤ Y` (so the peel recursion never bottoms on a bare `c`).  `Y ≥ c+1` peels a `c`
     and recurses (`K+1`, `Y-c`); `Y < c` scatters `Y` to ones, false-merges one `{1,c}`,
     and gathers.  The invariant `2 ≤ K ∨ 3 ≤ Y` keeps the final `{c, Y-1}` merge legal. -/
-theorem loseOne (c : Nat) (hc3 : 3 ≤ c) :
+theorem loseOne (c : Nat) (hc3 : 2 ≤ c) :
     ∀ Y, 1 ≤ Y → ¬ (c ∣ Y) → ∀ K, 1 ≤ K → (2 ≤ K ∨ 3 ≤ Y) →
       Reach [⟨1,c,c⟩] (List.replicate K c ++ [Y]) [K * c + Y - 1] := by
   intro Y
@@ -6782,7 +6782,7 @@ end YaStupid
 namespace YaStupid
 
 /-- Descend for `⟨1,c,c⟩` when `c ∤ n+1`: peel one `c`, `loseOne` the rest. -/
-theorem descend_1cc_nondvd (c : Nat) (hc3 : 3 ≤ c) :
+theorem descend_1cc_nondvd (c : Nat) (hc3 : 2 ≤ c) :
     ∀ n, c + 2 ≤ n → ¬ (c ∣ (n + 1)) → Reach [⟨1,c,c⟩] [n + 1] [n] := by
   intro n hn hnd
   have hp := peelc_1cc c (by omega) (n + 1) (by omega)
@@ -6877,7 +6877,7 @@ theorem single_sufficiency_1cc (c : Nat) (hc3 : 3 ≤ c) :
     intro n hn; rw [hg, hM] at *
     by_cases hdvd : c ∣ (n + 1)
     · exact descend_1cc_dvd c hc3 n (by omega) hdvd
-    · exact descend_1cc_nondvd c hc3 n (by omega) hdvd
+    · exact descend_1cc_nondvd c (by omega) n (by omega) hdvd
   intro s t hs ht hg'
   exact sufficiency_of_pumps climb descend hs ht hg'
 
@@ -6895,5 +6895,115 @@ theorem solvable_1_3_3 {s t : Nat} (hs : 5 ≤ s) (ht : 5 ≤ t) : Reach [⟨1,3
 #print axioms YaStupid.descend_1cc_dvd
 #print axioms YaStupid.single_sufficiency_1cc
 #print axioms YaStupid.solvable_1_3_3
+
+end YaStupid
+
+
+namespace YaStupid
+
+/-! ### The last config family: `⟨1,2,2⟩` (`a=1`, `b=c=2`)
+
+The `c=2` member of `⟨1,c,c⟩`.  Climb and the non-divisible descend inherit from the
+relaxed `climb_1cc`/`descend_1cc_nondvd`.  For `2 ∣ n+1` the pile peels to all `2`s;
+the escape sources TWO `1`s by the odd-ball route `{2,2}→4, {4,2}→6, 6→{3,3}, 3→{1,2}`
+twice, rides ONE false-merge `{1,2}→2` (net `−1`), and reassembles around the spare
+`1` (`{1,4}→5`, then `{2, odd}` merges, all legal). -/
+
+/-- The literal core: `[2,2,2] → [5]` in `⟨1,2,2⟩` (loses exactly `1`). -/
+theorem rA_122 : Reach [⟨1,2,2⟩] [2,2,2] [5] :=
+  reach_move [2] (Local.nmerge 2 2 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 4 2 (by decide)) (by decide) <|
+  reach_move [] (Local.nsplit 6 (by decide) (by decide)) (by decide) <|
+  reach_move [3] (Local.nsplit 3 (by decide) (by decide)) (by decide) <|
+  reach_move [1,2] (Local.nsplit 3 (by decide) (by decide)) (by decide) <|
+  reach_move [1,2] (Local.fmerge ⟨1,2,2⟩ (by decide)) (by decide) <|
+  reach_move [1] (Local.nmerge 2 2 (by decide)) (by decide) <|
+  reach_move [] (Local.nmerge 1 4 (by decide)) (by decide) <|
+  Reach.refl _
+
+/-- Merge `d` copies of `2` (on the left) onto `[x]` (`x ≥ 3`): `2^d ++ [x] → [2d+x]`. -/
+theorem merge2s_122R : ∀ d x, 3 ≤ x → Reach [⟨1,2,2⟩] (List.replicate d 2 ++ [x]) [2*d + x] := by
+  intro d
+  induction d with
+  | zero => intro x hx; simpa using Reach.refl [x]
+  | succ d ih =>
+    intro x hx
+    have hcc : ∀ f ∈ ([⟨1,2,2⟩] : Config), ¬ ((f.a = 2 ∧ f.b = x) ∨ (f.a = x ∧ f.b = 2)) := by
+      simp only [List.mem_singleton, forall_eq]; omega
+    have hp : (List.replicate (d+1) 2 ++ [x]).Perm ([2, x] ++ List.replicate d 2) := by
+      rw [List.replicate_succ, List.cons_append]
+      exact List.Perm.cons 2 (List.perm_append_comm (l₁ := List.replicate d 2) (l₂ := [x]))
+    have hpb : (List.replicate d 2 ++ [2 + x]).Perm ([2 + x] ++ List.replicate d 2) :=
+      List.perm_append_comm (l₁ := List.replicate d 2) (l₂ := [2 + x])
+    have hrec := ih (2 + x) (by omega)
+    rw [show 2*d + (2 + x) = 2*(d+1) + x from by omega] at hrec
+    exact reach_move' (List.replicate d 2) (Local.nmerge 2 x hcc) hp hpb hrec
+
+/-- Descend for `⟨1,2,2⟩` when `2 ∣ n+1`: peel to all `2`s, run the odd-ball core,
+    reassemble. -/
+theorem descend_122_dvd : ∀ n, 4 ≤ n → (2 ∣ (n + 1)) → Reach [⟨1,2,2⟩] [n + 1] [n] := by
+  intro n hn hdvd
+  obtain ⟨K, hK⟩ := hdvd
+  have hn1 : n + 1 = K * 2 := by omega
+  have hK3 : 3 ≤ K := by omega
+  have hpe := peelcManyG 1 2 2 (peelc_1cc 2 (by omega)) (K - 1) (n + 1) (by
+    have hsm : (K - 1) * 2 + 2 = K * 2 := by rw [← Nat.succ_mul]; congr 1; omega
+    omega)
+  have hsm : (K - 1) * 2 + 2 = K * 2 := by rw [← Nat.succ_mul]; congr 1; omega
+  rw [show n + 1 - (K - 1) * 2 = 2 from by omega] at hpe
+  have e2K : List.replicate (K - 1) 2 ++ [2] = List.replicate K 2 := by
+    rw [← List.replicate_succ']; congr 1; omega
+  rw [e2K] at hpe
+  have esplit : List.replicate K 2 = List.replicate (K - 3) 2 ++ [2,2,2] := by
+    rw [show ([2,2,2] : List Nat) = List.replicate 3 2 from rfl, repl_add]; congr 1; omega
+  rw [esplit] at hpe
+  have hcore : Reach [⟨1,2,2⟩] (List.replicate (K - 3) 2 ++ [2,2,2])
+      (List.replicate (K - 3) 2 ++ [5]) := reach_frame_left _ rA_122
+  have hfin := merge2s_122R (K - 3) 5 (by omega)
+  rw [show 2 * (K - 3) + 5 = n from by omega] at hfin
+  exact reach_trans hpe (reach_trans hcore hfin)
+
+/-- **Full sufficiency for `⟨1,2,2⟩`** (`M = 4`, `g = 1`): every `s,t ≥ 4` are
+    interreachable. -/
+theorem single_sufficiency_122 :
+    ∀ s t, Mval [⟨1,2,2⟩] ≤ s → Mval [⟨1,2,2⟩] ≤ t →
+      gz [⟨1,2,2⟩] ∣ ((t : Int) - s) → Reach [⟨1,2,2⟩] [s] [t] := by
+  have hg : gnat [⟨1,2,2⟩] = 1 := by rw [gnat_dpos 1 2 2 (by omega)]
+  have hM : Mval [⟨1,2,2⟩] = 4 := by decide
+  have climb : ∀ n, Mval [⟨1,2,2⟩] ≤ n → Reach [⟨1,2,2⟩] [n] [n + gnat [⟨1,2,2⟩]] := by
+    intro n hn; rw [hg, hM] at *
+    have := climb_1cc 2 (by omega) n (by omega)
+    rwa [show n + (1 + 2 - 2) = n + 1 from by omega] at this
+  have descend : ∀ n, Mval [⟨1,2,2⟩] ≤ n → Reach [⟨1,2,2⟩] [n + gnat [⟨1,2,2⟩]] [n] := by
+    intro n hn; rw [hg, hM] at *
+    by_cases hdvd : 2 ∣ (n + 1)
+    · exact descend_122_dvd n (by omega) hdvd
+    · exact descend_1cc_nondvd 2 (by omega) n (by omega) hdvd
+  intro s t hs ht hg'
+  exact sufficiency_of_pumps climb descend hs ht hg'
+
+/-- **The whole family `⟨1,c,c⟩` is solvable for every `c ≥ 2`.** -/
+theorem single_sufficiency_1cc_all (c : Nat) (hc2 : 2 ≤ c) :
+    ∀ s t, Mval [⟨1,c,c⟩] ≤ s → Mval [⟨1,c,c⟩] ≤ t →
+      gz [⟨1,c,c⟩] ∣ ((t : Int) - s) → Reach [⟨1,c,c⟩] [s] [t] := by
+  by_cases hc : c = 2
+  · subst hc; exact single_sufficiency_122
+  · exact single_sufficiency_1cc c (by omega)
+
+/-- The degenerate lie `1 + 2 = 2` is solvable above `M = 4`. -/
+theorem solvable_1_2_2 {s t : Nat} (hs : 4 ≤ s) (ht : 4 ≤ t) : Reach [⟨1,2,2⟩] [s] [t] := by
+  refine single_sufficiency_122 s t ?_ ?_ ?_
+  · have : Mval [⟨1,2,2⟩] = 4 := by decide
+    omega
+  · have : Mval [⟨1,2,2⟩] = 4 := by decide
+    omega
+  · have : gz [⟨1,2,2⟩] = 1 := by decide
+    rw [this]; exact Int.one_dvd _
+
+#print axioms YaStupid.rA_122
+#print axioms YaStupid.descend_122_dvd
+#print axioms YaStupid.single_sufficiency_122
+#print axioms YaStupid.single_sufficiency_1cc_all
+#print axioms YaStupid.solvable_1_2_2
 
 end YaStupid
