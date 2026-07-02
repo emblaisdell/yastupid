@@ -6069,3 +6069,241 @@ theorem solvable_3_4_2 {s t : Nat} (hs : 8 ≤ s) (ht : 8 ≤ t)
 #print axioms YaStupid.solvable_3_4_2
 
 end YaStupid
+
+
+namespace YaStupid
+
+/-! ### The degenerate `c = 2` family `⟨2,b,2⟩` (a leg equals the target)
+
+Here `a = c = 2`, so the value `2` is both a leg and the locked target and *every*
+`{x,2}` merge is the forbidden pair when `x = b`.  `peel2` peels a `2` off any `v ≥ 3`
+(two-route: if peeling off `v/2` would leave `{v/2−2,(v+1)/2} = {2,b}`, peel off the
+*other* half instead — safe for all `b ≠ 4`; the coincidence forces both routes bad
+only at `⟨2,4,2⟩`, which is `⟨c,2c,c⟩` at `c=2` and is handled by `peelc_c2c`). -/
+
+/-- Peel a `2` off any `v ≥ 3` in `⟨2,b,2⟩` (`b ≥ 3`, `b ≠ 4`). -/
+theorem peel2G (b : Nat) (hb3 : 3 ≤ b) (hb4 : b ≠ 4) :
+    ∀ v, 3 ≤ v → Reach [⟨2,b,2⟩] [v] [2, v - 2] := by
+  intro v
+  induction v using Nat.strongRecOn with
+  | ind v ih =>
+    intro hv
+    by_cases h3 : v = 3
+    · subst h3
+      refine reach_move' [] (Local.nsplit 3 (by omega) (by simp only [List.mem_singleton, forall_eq]; omega))
+        (List.Perm.refl _) ?_ (Reach.refl _)
+      exact List.Perm.swap 1 2 []
+    · by_cases h4 : v = 4
+      · subst h4
+        have h : Reach [⟨2,b,2⟩] [4] [4/2, (4+1)/2] :=
+          reach_move [] (Local.nsplit 4 (by omega) (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+        simpa using h
+      · by_cases h5 : v = 5
+        · subst h5
+          have h : Reach [⟨2,b,2⟩] [5] [5/2, (5+1)/2] :=
+            reach_move [] (Local.nsplit 5 (by omega) (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+          simpa using h
+        · -- v ≥ 6
+          have hsp : Reach [⟨2,b,2⟩] [v] [v/2, (v+1)/2] :=
+            reach_move [] (Local.nsplit v (by omega) (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+          by_cases hbad : (2 = v/2 - 2 ∧ b = (v+1)/2) ∨ (2 = (v+1)/2 ∧ b = v/2 - 2)
+          · -- normal route bad → peel 2 off the OTHER half (v+1)/2
+            have hp2 := ih ((v+1)/2) (by omega) (by omega)
+            have hfr : Reach [⟨2,b,2⟩] [v/2, (v+1)/2] [v/2, 2, (v+1)/2 - 2] := by
+              have := reach_frame_left [v/2] hp2; simpa using this
+            have hcc : ∀ f ∈ ([⟨2,b,2⟩] : Config),
+                ¬ ((f.a = v/2 ∧ f.b = (v+1)/2 - 2) ∨ (f.a = (v+1)/2 - 2 ∧ f.b = v/2)) := by
+              simp only [List.mem_singleton, forall_eq]; omega
+            have hmg : Reach [⟨2,b,2⟩] [v/2, 2, (v+1)/2 - 2] [2, v - 2] := by
+              refine reach_move' [2] (Local.nmerge (v/2) ((v+1)/2 - 2) hcc)
+                (by rw [List.perm_iff_count]; intro x; simp [List.count_cons] <;> omega) ?_ (Reach.refl _)
+              rw [show v/2 + ((v+1)/2 - 2) = v - 2 from by omega]
+              exact List.Perm.swap (v - 2) 2 []
+            exact reach_trans hsp (reach_trans hfr hmg)
+          · -- normal route
+            have hp1 := ih (v/2) (by omega) (by omega)
+            have hfr : Reach [⟨2,b,2⟩] [v/2, (v+1)/2] [2, v/2 - 2, (v+1)/2] := by
+              have := reach_frame [(v+1)/2] hp1; simpa using this
+            have hcc : ∀ f ∈ ([⟨2,b,2⟩] : Config),
+                ¬ ((f.a = v/2 - 2 ∧ f.b = (v+1)/2) ∨ (f.a = (v+1)/2 ∧ f.b = v/2 - 2)) := by
+              simp only [List.mem_singleton, forall_eq]; omega
+            have hm0 : Reach [⟨2,b,2⟩] [v/2 - 2, (v+1)/2] [v/2 - 2 + (v+1)/2] :=
+              reach_move [] (Local.nmerge (v/2 - 2) ((v+1)/2) hcc) (List.Perm.refl _) (Reach.refl _)
+            have hmg : Reach [⟨2,b,2⟩] [2, v/2 - 2, (v+1)/2] [2, v - 2] := by
+              have := reach_frame_left [2] hm0
+              rw [show v/2 - 2 + (v+1)/2 = v - 2 from by omega] at this
+              simpa using this
+            exact reach_trans hsp (reach_trans hfr hmg)
+
+#print axioms YaStupid.peel2G
+
+end YaStupid
+
+
+namespace YaStupid
+
+/-- Merge `d` copies of `2` onto `[x]` up to `[b]` in `⟨2,b,2⟩` (`b ≥ 3`); every input
+    `x + 2i < b`, so `{·,2} ≠ {2,b}`. -/
+theorem mergeTwos2 (b : Nat) (hb3 : 3 ≤ b) : ∀ d x, x + 2 * d = b →
+    Reach [⟨2,b,2⟩] (x :: List.replicate d 2) [b] := by
+  intro d
+  induction d with
+  | zero => intro x hx; have hxb : x = b := by omega
+            rw [hxb]; simpa using Reach.refl [b]
+  | succ d ih =>
+    intro x hx
+    have hcc : ∀ f ∈ ([⟨2,b,2⟩] : Config), ¬ ((f.a = x ∧ f.b = 2) ∨ (f.a = 2 ∧ f.b = x)) := by
+      simp only [List.mem_singleton, forall_eq]; omega
+    have hm : Reach [⟨2,b,2⟩] (x :: List.replicate (d+1) 2) ((x + 2) :: List.replicate d 2) := by
+      have h : Reach [⟨2,b,2⟩] ([x, 2] ++ List.replicate d 2) ([x + 2] ++ List.replicate d 2) :=
+        reach_frame _ (reach_move [] (Local.nmerge x 2 hcc) (List.Perm.refl _) (Reach.refl _))
+      have e : x :: List.replicate (d+1) 2 = [x, 2] ++ List.replicate d 2 := by rw [List.replicate_succ]; rfl
+      rw [e]; simpa using h
+    exact reach_trans hm (ih (x + 2) (by omega))
+
+/-- `[2,2,2] → [1,2,3]` in `⟨2,b,2⟩` (`b = 3+2f`, so `b` odd `≥3`, hence `b ∉ {2,4}`). -/
+theorem gadget123_2 (b f : Nat) (hbf : b = 3 + 2*f) :
+    Reach [⟨2,b,2⟩] (List.replicate 3 2) [1, 2, 3] := by
+  have hgs : ∀ k, 1 ≤ k → k < 3 → ¬ ((2 = 2 ∧ b = k*2) ∨ (2 = k*2 ∧ b = 2)) := by
+    intro k _ _; omega
+  have g6 : Reach [⟨2,b,2⟩] (List.replicate 3 2) [3 * 2] := gatherCvalG 2 b 2 3 (by omega) hgs
+  have s1 : Reach [⟨2,b,2⟩] [3 * 2] [3, 3] :=
+    reach_move [] (Local.nsplit (3*2) (by omega) (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _)
+  have s2 : Reach [⟨2,b,2⟩] [3, 3] [1, 2, 3] :=
+    reach_frame [3] (reach_move [] (Local.nsplit 3 (by omega) (by simp only [List.mem_singleton, forall_eq]; omega)) (List.Perm.refl _) (Reach.refl _))
+  exact reach_trans g6 (reach_trans s1 s2)
+
+/-- Descend for odd-leg `⟨2,b,2⟩` (`b = 3+2f` odd `≥3`): `[n+b] → [n]`.
+    Build `[b]` from a `[3]` seed + `f` `2`s, use the gadget's spare `2` as the
+    false-merge partner and its spare `1` (safe: `1 ∉ {2,b}`) to fix the leftover. -/
+theorem descend2_odd (b f : Nat) (hbf : b = 3 + 2*f)
+    (hpeel : ∀ v, 3 ≤ v → Reach [⟨2,b,2⟩] [v] [2, v - 2]) :
+    ∀ n, 2 + b + 1 ≤ n → Reach [⟨2,b,2⟩] [n + (2 + b - 2)] [n] := by
+  intro n hn
+  have hpe := peelcManyG 2 b 2 hpeel (3 + f) (n + (2 + b - 2)) (by omega)
+  rw [show n + (2 + b - 2) - (3 + f) * 2 = n - 3 from by omega] at hpe
+  have esplit : List.replicate (3 + f) 2 ++ [n - 3]
+      = List.replicate 3 2 ++ (List.replicate f 2 ++ [n - 3]) := by
+    rw [← repl_add, List.append_assoc]
+  rw [esplit] at hpe
+  -- gadget -> [1,2,3]
+  have g1 : Reach [⟨2,b,2⟩] (List.replicate 3 2 ++ (List.replicate f 2 ++ [n - 3]))
+      ([1,2,3] ++ (List.replicate f 2 ++ [n - 3])) := reach_frame _ (gadget123_2 b f hbf)
+  -- bridge [3] + f 2s -> [b]
+  have g2 : Reach [⟨2,b,2⟩] ([1,2,3] ++ (List.replicate f 2 ++ [n - 3])) [1, 2, b, n - 3] := by
+    have hbr : Reach [⟨2,b,2⟩] (3 :: List.replicate f 2) [b] := mergeTwos2 b (by omega) f 3 (by omega)
+    have := reach_frame_left [1, 2] (reach_frame [n - 3] hbr); simpa using this
+  -- merge spare 1 into leftover -> n-2
+  have g3 : Reach [⟨2,b,2⟩] [1, 2, b, n - 3] [n - 2, 2, b] := by
+    have hcc : ∀ f' ∈ ([⟨2,b,2⟩] : Config), ¬ ((f'.a = 1 ∧ f'.b = n - 3) ∨ (f'.a = n - 3 ∧ f'.b = 1)) := by
+      simp only [List.mem_singleton, forall_eq]; omega
+    have h : Reach [⟨2,b,2⟩] [1, 2, b, n - 3] ([1 + (n - 3)] ++ [2, b]) :=
+      reach_move [2, b] (Local.nmerge 1 (n - 3) hcc)
+        (by rw [List.perm_iff_count]; intro x; simp [List.count_cons] <;> omega) (Reach.refl _)
+    rwa [show 1 + (n - 3) = n - 2 from by omega] at h
+  -- false-merge {2,b} -> 2
+  have g4 : Reach [⟨2,b,2⟩] [n - 2, 2, b] [2, n - 2] := by
+    have h : Reach [⟨2,b,2⟩] [n - 2, 2, b] ([2] ++ [n - 2]) :=
+      reach_move [n - 2] (Local.fmerge ⟨2,b,2⟩ (List.mem_singleton.2 rfl))
+        (by rw [List.perm_iff_count]; intro x; simp [List.count_cons] <;> omega) (Reach.refl _)
+    simpa using h
+  -- merge {2, n-2} -> n
+  have g5 : Reach [⟨2,b,2⟩] [2, n - 2] [n] := by
+    have hcc : ∀ f' ∈ ([⟨2,b,2⟩] : Config), ¬ ((f'.a = 2 ∧ f'.b = n - 2) ∨ (f'.a = n - 2 ∧ f'.b = 2)) := by
+      simp only [List.mem_singleton, forall_eq]; omega
+    have h := reach_move [] (Local.nmerge 2 (n - 2) hcc) (List.Perm.refl _) (Reach.refl _)
+    rwa [show 2 + (n - 2) = n from by omega] at h
+  exact reach_trans hpe (reach_trans g1 (reach_trans g2 (reach_trans g3 (reach_trans g4 g5))))
+
+#print axioms YaStupid.mergeTwos2
+#print axioms YaStupid.gadget123_2
+#print axioms YaStupid.descend2_odd
+
+end YaStupid
+
+
+namespace YaStupid
+
+/-- **Odd-leg degenerate `⟨2,b,2⟩` is solvable** (`b = 3+2f` odd `≥3`; e.g. `2+3=2`,
+    `2+5=2`, `2+7=2`). -/
+theorem single_sufficiency_c2_odd_leg (b f : Nat) (hbf : b = 3 + 2*f) :
+    ∀ s t, Mval [⟨2,b,2⟩] ≤ s → Mval [⟨2,b,2⟩] ≤ t →
+      gz [⟨2,b,2⟩] ∣ ((t : Int) - s) → Reach [⟨2,b,2⟩] [s] [t] := by
+  have hb3 : 3 ≤ b := by omega
+  have hpeel := peel2G b hb3 (by omega)
+  have hg : gnat [⟨2,b,2⟩] = 2 + b - 2 := gnat_dpos 2 b 2 (by omega)
+  have hM : Mval [⟨2,b,2⟩] = 2 + b + 1 := by
+    show Hnat [⟨2,b,2⟩] + 1 = 2 + b + 1; rw [Hnat_dpos 2 b 2 (by omega)]
+  have climb : ∀ n, Mval [⟨2,b,2⟩] ≤ n → Reach [⟨2,b,2⟩] [n] [n + gnat [⟨2,b,2⟩]] := by
+    intro n hn; rw [hg, hM] at *; exact climbTrap 2 b 2 (by omega) (by omega) (by omega) (by omega) hpeel n (by omega)
+  have descend : ∀ n, Mval [⟨2,b,2⟩] ≤ n → Reach [⟨2,b,2⟩] [n + gnat [⟨2,b,2⟩]] [n] := by
+    intro n hn; rw [hg, hM] at *; exact descend2_odd b f hbf hpeel n (by omega)
+  intro s t hs ht hg'
+  exact sufficiency_of_pumps climb descend hs ht hg'
+
+/-- **Even-leg degenerate `⟨2,b,2⟩` is solvable** (`b = 2·mb` even, `b ≠ 4`; e.g. `2+6=2`,
+    `2+8=2`). -/
+theorem single_sufficiency_c2_even_leg (b mb : Nat) (hmb : mb * 2 = b) (hmb1 : 1 ≤ mb)
+    (hb4 : b ≠ 4) (hb3 : 3 ≤ b) :
+    ∀ s t, Mval [⟨2,b,2⟩] ≤ s → Mval [⟨2,b,2⟩] ≤ t →
+      gz [⟨2,b,2⟩] ∣ ((t : Int) - s) → Reach [⟨2,b,2⟩] [s] [t] :=
+  single_sufficiency_div 2 b 2 1 mb (by omega) (by omega) (by omega) (by omega) (by omega) hmb (by omega) hmb1
+    (peel2G b hb3 hb4)
+
+/-- **Every degenerate `⟨2,b,2⟩` (`b ≥ 3`) is solvable** — the last `c=2` family.
+    (`⟨a,2,2⟩` follows by `reach_swap`; `⟨2,2,2⟩` is `single_sufficiency_222`.) -/
+theorem single_sufficiency_2b2 (b : Nat) (hb3 : 3 ≤ b) :
+    ∀ s t, Mval [⟨2,b,2⟩] ≤ s → Mval [⟨2,b,2⟩] ≤ t →
+      gz [⟨2,b,2⟩] ∣ ((t : Int) - s) → Reach [⟨2,b,2⟩] [s] [t] := by
+  by_cases hpar : b % 2 = 0
+  · -- b even
+    by_cases h4 : b = 4
+    · subst h4
+      have e : ([⟨2,4,2⟩] : Config) = [⟨2, 2*2, 2⟩] := by decide
+      rw [e]; exact single_sufficiency_c2c 2 (by omega)
+    · exact single_sufficiency_c2_even_leg b (b/2) (by omega) (by omega) h4 hb3
+  · -- b odd
+    exact single_sufficiency_c2_odd_leg b ((b - 3)/2) (by omega)
+
+/-- The degenerate lie `2 + 3 = 2` (`a = c`, odd leg) is solvable above `M = 6`. -/
+theorem solvable_2_3_2 {s t : Nat} (hs : 6 ≤ s) (ht : 6 ≤ t)
+    (h : (3:Int) ∣ ((t:Int) - s)) : Reach [⟨2,3,2⟩] [s] [t] := by
+  refine single_sufficiency_2b2 3 (by omega) s t ?_ ?_ ?_
+  · have : Mval [⟨2,3,2⟩] = 6 := by decide
+    omega
+  · have : Mval [⟨2,3,2⟩] = 6 := by decide
+    omega
+  · have : gz [⟨2,3,2⟩] = 3 := by decide
+    rw [this]; exact h
+
+/-- The degenerate lie `2 + 6 = 2` (`a = c`, even leg `≠ 4`) is solvable above `M = 9`. -/
+theorem solvable_2_6_2 {s t : Nat} (hs : 9 ≤ s) (ht : 9 ≤ t)
+    (h : (6:Int) ∣ ((t:Int) - s)) : Reach [⟨2,6,2⟩] [s] [t] := by
+  refine single_sufficiency_2b2 6 (by omega) s t ?_ ?_ ?_
+  · have : Mval [⟨2,6,2⟩] = 9 := by decide
+    omega
+  · have : Mval [⟨2,6,2⟩] = 9 := by decide
+    omega
+  · have : gz [⟨2,6,2⟩] = 6 := by decide
+    rw [this]; exact h
+
+/-- The degenerate lie `7 + 2 = 2` (`b = c`, via `reach_swap` to `⟨2,7,2⟩`) is solvable
+    above `M = 10`. -/
+theorem solvable_7_2_2 {s t : Nat} (hs : 10 ≤ s) (ht : 10 ≤ t)
+    (h : (7:Int) ∣ ((t:Int) - s)) : Reach [⟨7,2,2⟩] [s] [t] := by
+  have key : Reach [⟨2,7,2⟩] [s] [t] := by
+    refine single_sufficiency_2b2 7 (by omega) s t ?_ ?_ ?_
+    · have : Mval [⟨2,7,2⟩] = 10 := by decide
+      omega
+    · have : Mval [⟨2,7,2⟩] = 10 := by decide
+      omega
+    · have : gz [⟨2,7,2⟩] = 7 := by decide
+      rw [this]; exact h
+  exact reach_swap 2 7 2 key
+
+#print axioms YaStupid.single_sufficiency_2b2
+#print axioms YaStupid.solvable_2_3_2
+#print axioms YaStupid.solvable_2_6_2
+#print axioms YaStupid.solvable_7_2_2
+
+end YaStupid
