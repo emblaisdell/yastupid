@@ -7445,3 +7445,18 @@ theorem single_sufficiency_all (a b c : Nat) (ha : 1 ≤ a) (hb : 1 ≤ b) (hc :
 #print axioms YaStupid.single_sufficiency_all
 
 end YaStupid
+
+
+namespace YaStupid
+
+/-- **THE CHARACTERIZATION (iff form).**  For every single false sum `a + b = c`
+    (`a,b,c ≥ 1`) and every `s, t ≥ M = H+1`:
+    `[s]` reaches `[t]`  **iff**  `g ∣ (t − s)`. -/
+theorem single_characterization (a b c : Nat) (ha : 1 ≤ a) (hb : 1 ≤ b) (hc : 1 ≤ c)
+    {s t : Nat} (hs : Mval [⟨a,b,c⟩] ≤ s) (ht : Mval [⟨a,b,c⟩] ≤ t) :
+    Reach [⟨a,b,c⟩] [s] [t] ↔ gz [⟨a,b,c⟩] ∣ ((t : Int) - s) :=
+  ⟨reach_congr, single_sufficiency_all a b c ha hb hc s t hs ht⟩
+
+#print axioms YaStupid.single_characterization
+
+end YaStupid
