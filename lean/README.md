@@ -3,6 +3,22 @@
 Machine-checked facts about *Ya Stupid* solvability, in **Lean 4 (core only, no
 Mathlib)**, checked with **Lean 4.31.0** (pinned in `lean-toolchain`).
 
+## THE THEOREM
+
+**The characterization is complete.**  For **every** single false sum `a + b = c`
+(`a, b, c ≥ 1`) and every pair of single balls `s, t ≥ M = H + 1`
+(`H = max(a+b, c)`, `g = |a+b−c|`):
+
+```
+single_characterization :  Reach [⟨a,b,c⟩] [s] [t]  ↔  g ∣ (t − s)
+```
+
+Sufficiency is **`single_sufficiency_all`**, a case dispatch over every family
+closure in this file (see the sections below); necessity is `reach_congr`
+(which holds for any number of false sums); sharpness of `M` is witnessed by
+`classic_trap`.  Axioms: `[propext, Classical.choice, Quot.sound]` — no `sorry`
+anywhere.
+
 ## What is proved
 
 `YaStupid.lean` models a board as a `List Nat` and defines, for an arbitrary
@@ -373,61 +389,51 @@ the lone both-bad value `⟨1,3,2⟩` at `v = 6` uses `special6_132`) and false-
 while `descend_a1_b2_{odd,even}` build `[b]` from `2`s and take the gadget's spare `1` as
 the false-merge partner `{1,b}→2`.
 
-## What is *not* (yet) mechanized
+### The doubly-degenerate trap `⟨1,c,c⟩` — closed
 
-Only the doubly-degenerate **`⟨1,c,c⟩`** (`a = 1`, `b = c`, `g = 1`, any `c ≥ 2`;
-plus `⟨c,1,c⟩` by symmetry) remains.  It is a genuine *trap* — `[c]` only false-splits
-to `{1,c}`, regenerating the `c` (`[c] → [1,c] → [1,1,c] → …`), so it never reaches
-pure ones and the ones-hub cannot run.  Naive peeling is **provably unreachable**
-(`[c] → [1,c−1]`, and even `[5] → [1,4]` in `⟨1,3,3⟩`); a correct descend must produce
-the `1` by splitting a value in `(c,2c)` down below `c`, and — when `n+1` is divisible
-by `c` (the analogue of the power-of-`2` obstruction, where the pile is all `c`s) — must
-ride a balanced false-split/merge excursion.  A uniform such descend, plus a
-`{1,c}`-dodging rebuild, is the remaining construction.
+`single_sufficiency_1cc_all` closes `⟨1,c,c⟩` for **every** `c ≥ 2` (`⟨c,1,c⟩` by swap).
+This is a genuine trap — `[c]` only false-splits to `{1,c}`, regenerating the `c`, so
+pure ones are unreachable, and naive peeling is *provably* impossible (`[c] → [1,c−1]`
+and even `[5] → [1,4]` in `⟨1,3,3⟩` are unreachable).  The escape (`g = 1`):
+**`loseOne`** recursively peels `c`s off the remainder and, at the sub-`c` base,
+scatters to ones and rides ONE false-merge `{1,c}→c` (losing exactly `1`); when
+`c ∣ n+1` (the pile would peel to all `c`s), `descend_1cc_dvd` first climbs `+1`, peels
+to `c^(K−1) ++ [c+1]`, scatters the `c+1`, and rides TWO false-merges.  For `c = 2`
+(`⟨1,2,2⟩`) the divisible case instead runs the odd-ball core
+`{2,2}→4, {4,2}→6, 6→{3,3}, 3→{1,2}` (`rA_122`), sourcing two `1`s by *splitting*
+rather than false-splitting, and rides one false-merge.
 
-This is a construction gap, not a math gap: an exhaustive search
-([`../test/counterexample-search.js`](../test/counterexample-search.js)) plus targeted
-bidirectional BFS over the `c·2^k` traps, the whole `c=2` family, and the `a=1`
-families (every pump gap `[n] ↔ [n+g]` for many `n`) find **no counterexample
-anywhere** — `M = H+1` holds universally, including for the open `⟨1,c,c⟩` family.
+### The `c = 1` family `⟨a,b,1⟩` — closed
 
-Equivalently phrased — the two one-step pumps for an **arbitrary** configuration:
+`single_sufficiency_c1` closes every `⟨a,b,1⟩` (`b ≥ 2`; `⟨1,1,1⟩` is `kkk 1`,
+`⟨a,1,1⟩` by swap).  With `c = 1` nothing is blocked from normal splitting
+(`scatAll1`), so a ones-hub runs; the only care is dodging the `{a,b}` merge and — for
+`a = 1` — the poisoned `{1,b}` pair (skipped via a `[b−1]+[2]` or `[2]+[2]` rebuild).
+
+## Everything is closed
+
+**There is no open case.**  `single_sufficiency_all` assembles all of the above into
+the complete dispatch — for every `a, b, c ≥ 1` (including `a+b = c`, where `g = 0`
+and the statement is trivial), every `s,t ≥ M` with `g ∣ (t−s)` are interreachable —
+and `single_characterization` states the two-directional iff.  The assembly rests on
+three glue lemmas: **`suff_swap`** (sufficiency transfers across `⟨a,b,c⟩ ↦ ⟨b,a,c⟩`,
+via `reach_swap` + `Mval`/`gz` swap-invariance), **`pow_or_scat`** (every `v ≥ c` is
+`2^k·c` or `Scat c v` — so a non-Scat leg *is* a trap leg), and **`pow2_eq_succ`**
+(`2^q = 2^p + 1` forces `p=0, q=1`, isolating the pathological `⟨c,2c,c⟩` shape).
+
+The two one-step pumps
 
 ```
 climb   : ∀ n, Mval cfg ≤ n → Reach cfg [n] [n + gnat cfg]
 descend : ∀ n, Mval cfg ≤ n → Reach cfg [n + gnat cfg] [n]
 ```
 
-`sufficiency_of_pumps` already reduces *general* sufficiency to these. For Classic
-they are discharged above (and now also re-derived symbolically). For a single sum
-with `a + b < c` (and not `a=b=1`) **both pumps are fully proved**; for `a + b > c`
-with legs `< c` **both pumps are fully proved** too (the one-pile hub, *every*
-cluster structure).
-
-So the present status: **Classic is completely characterized (necessity +
-sufficiency + sharpness, all `sorry`-free) — and now *also* as a corollary of a
-fully symbolic theorem. Solvability is now completely characterized for **every**
-single sum with `a + b < c` (`single_sufficiency_dneg` for `2 ≤ a, b`,
-`single_sufficiency_dneg_min1` for a unit leg, `single_sufficiency_a11` for
-`a = b = 1`), and for every `a + b > c` with both legs `< c`
-(`single_sufficiency_dpos_full`, e.g. `3+3=5`, `4+4=5`, `6+6=7`). For `a+b>c` with
-a leg `≥ c`, `single_sufficiency_legGE` gives full sufficiency conditional on the
-two leg-scatter facts `la`, `lb`, and `solvable_2_10_7` discharges them for the
-concrete `2+10=7` (`b > c`). The higher bands are closed uniformly by the `Scat`
-predicate (`single_sufficiency_scat` / `single_sufficiency_oneScat` — one non-`c·2^k`
-leg suffices), and the genuine `c·2^k` traps are now closed too: the diagonal `a=b=c`
-(`single_sufficiency_kkk`), the `a=b` traps (`single_sufficiency_aac`), and the
-`a ≠ b` traps `⟨c·2^i,c·2^j,c⟩` (`single_sufficiency_trap`, including the pathological
-`⟨c,2c,c⟩` via `peel4c`). For `c = 2`, **every config with both legs `≥ 3` is closed**
-(all four leg parities: `single_sufficiency_c2_aa`, `…_both_even`, `…_both_odd`,
-`…_odd_even`) via the copies-of-`2` hub.  The single remaining open family is the
-degenerate `c = 2` with a leg equal to `c` (`⟨2,b,2⟩`), where the value `2` is both a
-leg and the locked target.** All configs are
-exhaustively BFS-checked to contain NO counterexample
-(`test/counterexample-search.js`, plus targeted bidirectional BFS over the traps and
-the whole `c=2` family), so `M=H+1` is correct there too. Exhaustive search over the
-adversarial `{6+7=2, 6+8=3}` (where no `1` ever exists) likewise finds every in-range
-pump reachable.
+are therefore discharged for **every single false sum**; `sufficiency_of_pumps` turns
+them into full sufficiency, `reach_congr` gives necessity (for any number of false
+sums), and `classic_trap` gives sharpness of `M = H+1`.  Independent BFS
+(`test/counterexample-search.js` plus targeted bidirectional sweeps over the traps,
+the whole `c=2` family, and the `a=1` families) corroborates: no counterexample
+anywhere.
 
 ## Check it yourself
 
