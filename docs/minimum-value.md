@@ -135,13 +135,15 @@ the remainder into one ball the same way. $\square$
 > **Honesty note.** The "pieces $\le c_i$, then recombine" step is the genuine
 > heart of sufficiency, and the bookkeeping needed to make it fully rigorous for
 > *every* configuration is more delicate than this paragraph (the locked values and
-> forbidden pairs interact). It is now **machine‑checked for every single sum with
-> $a+b<c$ (except $a=b=1$), and for $a+b>c$ with legs $<c$ and $2(a+b)+2\le 3c$**
-> (see §8) — which includes Classic. As evidence the remaining cases are also *true*:
-> an exhaustive
-> search confirms every in‑range pump for the adversarial $\{6+7=2,\,6+8=3\}$ above
-> (where no $1$ ever exists), and Lean‑checked witnesses solve $2+2=2$'s in‑range
-> puzzle $5\to7$ and Classic's $19\to21$ / $21\to19$.
+> forbidden pairs interact). For a **single** false sum it is now **fully
+> machine‑checked for every $a,b,c\ge 1$** — `single_characterization` in
+> [`../lean/YaStupid.lean`](../lean/YaStupid.lean) proves
+> $\{s\}\to\{t\}\iff g\mid t-s$ for all $s,t\ge M=H+1$, with no `sorry` (see §8 and
+> the Lean README for the family-by-family constructions, including the genuine
+> traps $a=b=c$, $\langle c\cdot 2^i, c\cdot 2^j, c\rangle$, $\langle 1,c,c\rangle$,
+> and the whole $c\in\{1,2\}$ regime). For *multiple* false sums the pump argument
+> remains paper-level; an exhaustive search confirms every in‑range pump for the
+> adversarial $\{6+7=2,\,6+8=3\}$ (where no $1$ ever exists).
 
 ### 4.2 One pump in each direction
 
@@ -377,24 +379,26 @@ Classical.choice, Quot.sound`).
   `a+b < c` is closed except the degenerate `a=b=1`** (where ones cannot merge).
   `solvable_1_2_5` is a concrete corollary.
 
-Since then both families above have been **closed**: `a=b=1` with `a+b<c` via
-2-seeds (`single_sufficiency_a11`), and *all* of `a+b>c` with legs `<c` — every
-cluster structure, no `2(a+b)+2 ≤ 3c` restriction — via the all-ones hub
-(`single_sufficiency_dpos_full`, e.g. `4+4=5`, `6+6=7`). For `a+b>c` with a leg
-`≥ c`, **`single_sufficiency_legGE`** gives full sufficiency conditional on the two
-leg-scatter facts `la : Reach [a] (1^a)`, `lb : Reach [b] (1^b)` (the one step where
-the greedy scatter measure can fail); `solvable_2_10_7` discharges them for the
-concrete `2+10=7` (`b=10 > c=7`). The genuine traps where a leg never reaches ones
-(`la`/`lb` false) are exactly the diagonal `a=b=c`, now **completely closed** by
-**`single_sufficiency_kkk`** (all `k ≥ 1`) via the non-hub `peelk` construction (peel
-a locked `c`, fire one false move for `±g`, remerge). The inexact-leg representative
-`1+14=7` (legs scatter to `1^(b+kg)`, not `1^b`) is likewise **completely closed** by
-**`single_sufficiency_1147`** via the inexact-leg hub (`build1147` dodges the `{1,14}`
-merge, `scatter1147` does the `7`-escape, `gainOneG1147` gains `2g` then sheds `g`).
-What remains is to lift these two demonstrated techniques uniformly to the rest of the
-`a+b>c` leg-`≥ c` zoo (e.g. `2+14=7`, `3+3=2`), each needing its own scatter/escape;
-all are exhaustively BFS-verified to have no counterexample, so `M=H+1` holds there
-too. For
-any *concrete* single sum the base is finite and dischargeable by BFS (the Classic
-pipeline), so every concrete instance is fully provable. See
-[`../lean/README.md`](../lean/README.md).
+Since then **every remaining family has been closed**, culminating in the master
+theorems
+
+- **`single_sufficiency_all`** — for **every** single false sum `⟨a,b,c⟩`
+  (`a,b,c ≥ 1`), all `s,t ≥ M = H+1` with `g ∣ (t−s)` are interreachable; and
+- **`single_characterization`** — the iff form
+  `Reach [⟨a,b,c⟩] [s] [t] ↔ g ∣ (t−s)` for `s,t ≥ M`.
+
+The route, family by family: `a=b=1` with `a+b<c` via 2-seeds
+(`single_sufficiency_a11`); all of `a+b>c` with legs `<c` via the all-ones hub
+(`single_sufficiency_dpos_full`); the higher bands via the `Scat` predicate
+(`single_sufficiency_oneScat` — one non-`c·2^k` leg suffices, with the dichotomy
+`pow_or_scat` proving every leg `≥ c` is either `2^k·c` or `Scat`); the genuine
+`c·2^k` traps via non-hub peeling — the diagonal `a=b=c` (`single_sufficiency_kkk`),
+the `a=b` traps (`single_sufficiency_aac`), the `a≠b` traps
+(`single_sufficiency_trap`, with the pathological `⟨c,2c,c⟩` routed through the
+bespoke 11-move `peel4c`); the whole `c=2` regime (all four leg parities plus the
+degenerate leg-`=c` and unit-leg configs, via the copies-of-`2` hub); the
+doubly-degenerate trap `⟨1,c,c⟩` (the `loseOne` peel-and-false-merge recursion,
+with divisible totals escaping via a `+1` climb or, at `c=2`, the odd-ball core);
+and the `c=1` family (unobstructed ones-hub, `single_sufficiency_c1`). Mirror-image
+configs transfer by `suff_swap`. All `sorry`-free (axioms: `propext,
+Classical.choice, Quot.sound`). See [`../lean/README.md`](../lean/README.md).
