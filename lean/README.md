@@ -365,22 +365,31 @@ spare `2` as the false-merge partner and its spare `1` (safe: `1 ∉ {2,b}`) to 
 leftover.  Even `b` reuses `single_sufficiency_div`; `b = 4` is `⟨c,2c,c⟩` at `c = 2`
 (via the `c ≥ 2`-relaxed `single_sufficiency_c2c`).
 
+### Unit-leg `⟨1,b,2⟩` (`c = 2`) — closed
+
+`single_sufficiency_1b2` closes every `⟨1,b,2⟩` (`b ≥ 3`), and `⟨b,1,2⟩` by `reach_swap`.
+Ones are reachable here (`2 → {1,b}`), so `climb_a1_b2` peels a `2` (`peel2_a1`, two-route;
+the lone both-bad value `⟨1,3,2⟩` at `v = 6` uses `special6_132`) and false-splits it,
+while `descend_a1_b2_{odd,even}` build `[b]` from `2`s and take the gadget's spare `1` as
+the false-merge partner `{1,b}→2`.
+
 ## What is *not* (yet) mechanized
 
-Only the **unit-leg `a = 1`** configs whose *other* structure blocks the `c ≥ 3` hub
-remain — specifically `⟨1,b,2⟩` (`c = 2`, `b ≥ 3`) and `⟨1,c,c⟩` (`b = c`, any `c`;
-`g = 1`).  (For `c ≥ 3`, `b > c` is already closed by `single_sufficiency_a1` /
-`single_sufficiency_1bc`.)  These are subtle: naive peeling fails outright — e.g.
-`[c] → [1,c−1]` and even `[5] → [1,4]` in `⟨1,3,3⟩` are **provably unreachable** (a `[c]`
-only false-splits, and `1 ∈ {a,b}` poisons `{·,1}` merges), so the descend must take an
-ad-hoc route that produces the `1` by splitting an *odd* ball (e.g. `3 → {1,2}`) rather
-than peeling one.  A uniform such descend is the remaining construction.
+Only the doubly-degenerate **`⟨1,c,c⟩`** (`a = 1`, `b = c`, `g = 1`, any `c ≥ 2`;
+plus `⟨c,1,c⟩` by symmetry) remains.  It is a genuine *trap* — `[c]` only false-splits
+to `{1,c}`, regenerating the `c` (`[c] → [1,c] → [1,1,c] → …`), so it never reaches
+pure ones and the ones-hub cannot run.  Naive peeling is **provably unreachable**
+(`[c] → [1,c−1]`, and even `[5] → [1,4]` in `⟨1,3,3⟩`); a correct descend must produce
+the `1` by splitting a value in `(c,2c)` down below `c`, and — when `n+1` is divisible
+by `c` (the analogue of the power-of-`2` obstruction, where the pile is all `c`s) — must
+ride a balanced false-split/merge excursion.  A uniform such descend, plus a
+`{1,c}`-dodging rebuild, is the remaining construction.
 
 This is a construction gap, not a math gap: an exhaustive search
 ([`../test/counterexample-search.js`](../test/counterexample-search.js)) plus targeted
-bidirectional BFS over the `c·2^k` traps, the whole `c=2` family, and these `a=1`
+bidirectional BFS over the `c·2^k` traps, the whole `c=2` family, and the `a=1`
 families (every pump gap `[n] ↔ [n+g]` for many `n`) find **no counterexample
-anywhere** — `M = H+1` holds universally, including for the open `a=1` configs.
+anywhere** — `M = H+1` holds universally, including for the open `⟨1,c,c⟩` family.
 
 Equivalently phrased — the two one-step pumps for an **arbitrary** configuration:
 
