@@ -7198,3 +7198,250 @@ theorem solvable_2_3_1 {s t : Nat} (hs : 6 ≤ s) (ht : 6 ≤ t)
 #print axioms YaStupid.solvable_2_3_1
 
 end YaStupid
+
+
+namespace YaStupid
+
+/-! ### Toward the grand assembly: swap invariance, `g = 0`, and the pow/Scat dichotomy -/
+
+/-- `Hnat` is invariant under swapping the false pair. -/
+theorem Hnat_swap (a b c : Nat) : Hnat [⟨b,a,c⟩] = Hnat [⟨a,b,c⟩] := by
+  show max (max (b+a) c) 0 = max (max (a+b) c) 0
+  rw [Nat.add_comm]
+
+/-- `Mval` is invariant under swapping the false pair. -/
+theorem Mval_swap (a b c : Nat) : Mval [⟨b,a,c⟩] = Mval [⟨a,b,c⟩] := by
+  show Hnat [⟨b,a,c⟩] + 1 = Hnat [⟨a,b,c⟩] + 1
+  rw [Hnat_swap]
+
+/-- `gz` is invariant under swapping the false pair. -/
+theorem gz_swap (a b c : Nat) : gz [⟨b,a,c⟩] = gz [⟨a,b,c⟩] := by
+  show ((gnat [⟨b,a,c⟩] : Nat) : Int) = ((gnat [⟨a,b,c⟩] : Nat) : Int)
+  rw [gnat_single, gnat_single]
+  congr 1
+  omega
+
+/-- **Sufficiency transfers across the swap `⟨a,b,c⟩ ↦ ⟨b,a,c⟩`.** -/
+theorem suff_swap (a b c : Nat)
+    (h : ∀ s t, Mval [⟨a,b,c⟩] ≤ s → Mval [⟨a,b,c⟩] ≤ t →
+      gz [⟨a,b,c⟩] ∣ ((t : Int) - s) → Reach [⟨a,b,c⟩] [s] [t]) :
+    ∀ s t, Mval [⟨b,a,c⟩] ≤ s → Mval [⟨b,a,c⟩] ≤ t →
+      gz [⟨b,a,c⟩] ∣ ((t : Int) - s) → Reach [⟨b,a,c⟩] [s] [t] := by
+  intro s t hs ht hg
+  rw [Mval_swap] at hs ht
+  rw [gz_swap] at hg
+  exact reach_swap a b c (h s t hs ht hg)
+
+/-- The `a + b = c` "lie" is not a lie: `g = 0`, so only `t = s` is asked. -/
+theorem single_sufficiency_g0 (a b c : Nat) (heq : a + b = c) :
+    ∀ s t, Mval [⟨a,b,c⟩] ≤ s → Mval [⟨a,b,c⟩] ≤ t →
+      gz [⟨a,b,c⟩] ∣ ((t : Int) - s) → Reach [⟨a,b,c⟩] [s] [t] := by
+  have hgz : gz [⟨a,b,c⟩] = 0 := by
+    show ((gnat [⟨a,b,c⟩] : Nat) : Int) = 0
+    rw [gnat_single]
+    have : ((a : Int) + b - c) = 0 := by omega
+    rw [this]; rfl
+  intro s t _ _ hg
+  rw [hgz] at hg
+  have hst : s = t := by
+    have := Int.zero_dvd.mp hg
+    omega
+  subst hst; exact Reach.refl _
+
+/-- **The dichotomy**: every `v ≥ c` (`c ≥ 3`) is either `2^k·c` or `Scat c v`. -/
+theorem pow_or_scat (c : Nat) (hc3 : 3 ≤ c) :
+    ∀ v, c ≤ v → (∃ k, v = 2^k * c) ∨ Scat c v := by
+  intro v
+  induction v using Nat.strongRecOn with
+  | ind v ih =>
+    intro hcv
+    by_cases hv2c : v < 2*c
+    · by_cases hvc : v = c
+      · exact Or.inl ⟨0, by simpa using hvc⟩
+      · exact Or.inr (Scat.mid (by omega) (by omega))
+    · rcases ih (v/2) (by omega) (by omega) with ⟨k, hk⟩ | hs
+      · by_cases hpar : v % 2 = 0
+        · exact Or.inl ⟨k+1, by
+            rw [Nat.pow_succ, Nat.mul_comm (2^k) 2, Nat.mul_assoc]; omega⟩
+        · rcases ih ((v+1)/2) (by omega) (by omega) with ⟨j, hj⟩ | hs2
+          · exfalso
+            have h1 : c ∣ 2^j * c := ⟨2^j, Nat.mul_comm _ _⟩
+            have h2 : c ∣ 2^k * c := ⟨2^k, Nat.mul_comm _ _⟩
+            have hdiff : (2^j * c) - (2^k * c) = 1 := by omega
+            have hd : c ∣ 1 := by rw [← hdiff]; exact Nat.dvd_sub h1 h2
+            have := Nat.le_of_dvd (by omega) hd
+            omega
+          · exact Or.inr (Scat.bigC (by omega) hs2)
+      · exact Or.inr (Scat.bigF (by omega) hs)
+
+#print axioms YaStupid.suff_swap
+#print axioms YaStupid.single_sufficiency_g0
+#print axioms YaStupid.pow_or_scat
+
+end YaStupid
+
+
+namespace YaStupid
+
+/-- `2^r` is even for `r ≥ 1`. -/
+theorem two_pow_even : ∀ r, 1 ≤ r → 2^r % 2 = 0 := by
+  intro r hr
+  rcases r with _ | r
+  · omega
+  · rw [Nat.pow_succ]; omega
+
+/-- `2^q = 2^p + 1` forces `p = 0, q = 1` (parity + growth). -/
+theorem pow2_eq_succ (p q : Nat) (h : 2^q = 2^p + 1) : p = 0 ∧ q = 1 := by
+  have hppos : 0 < 2^p := Nat.pow_pos (by omega)
+  have hqpos : 0 < 2^q := Nat.pow_pos (by omega)
+  have hp0 : p = 0 := by
+    by_cases hp : p = 0
+    · exact hp
+    · exfalso
+      have hpe := two_pow_even p (by omega)
+      have hq1 : 1 ≤ q := by
+        by_cases hq : q = 0
+        · rw [hq] at h; simp at h
+        · omega
+      have hqe := two_pow_even q hq1
+      omega
+  rw [hp0] at h
+  simp at h
+  refine ⟨hp0, ?_⟩
+  rcases q with _ | _ | q
+  · simp at h
+  · rfl
+  · exfalso
+    have h4 : 2^2 ≤ 2^(q+2) := Nat.pow_le_pow_right (by omega) (by omega)
+    omega
+
+#print axioms YaStupid.pow2_eq_succ
+
+end YaStupid
+
+
+namespace YaStupid
+
+/-! ### THE GRAND ASSEMBLY: every single false sum, closed
+
+`single_sufficiency_all` dispatches **every** `⟨a,b,c⟩` (`a,b,c ≥ 1`) to its family
+closure.  Together with the necessity direction (`reach_congr`) this completes the
+characterization: `[s] → [t]` for `s,t ≥ M = H+1` iff `g ∣ (t−s)`. -/
+
+/-- The ordered case `a ≤ b`. -/
+theorem single_sufficiency_all_le (a b c : Nat) (ha : 1 ≤ a) (hab : a ≤ b) (hc : 1 ≤ c) :
+    ∀ s t, Mval [⟨a,b,c⟩] ≤ s → Mval [⟨a,b,c⟩] ≤ t →
+      gz [⟨a,b,c⟩] ∣ ((t : Int) - s) → Reach [⟨a,b,c⟩] [s] [t] := by
+  rcases Nat.lt_trichotomy (a + b) c with hlt | heq | hgt
+  · -- a + b < c
+    by_cases ha2 : 2 ≤ a
+    · exact single_sufficiency_dneg a b c ha2 (by omega) hlt
+    · have ha1 : a = 1 := by omega
+      by_cases hb2 : 2 ≤ b
+      · exact single_sufficiency_dneg_min1 a b c ha1 hb2 hlt
+      · have hb1 : b = 1 := by omega
+        have e : ([⟨a,b,c⟩] : Config) = [⟨1,1,c⟩] := by rw [ha1, hb1]
+        rw [e]
+        exact single_sufficiency_a11 c (by omega)
+  · exact single_sufficiency_g0 a b c heq
+  · -- c < a + b
+    by_cases hc1 : c = 1
+    · subst hc1
+      by_cases hb2 : 2 ≤ b
+      · exact single_sufficiency_c1 a b ha hb2
+      · have hab1 : a = 1 ∧ b = 1 := by omega
+        have e : ([⟨a,b,1⟩] : Config) = [⟨1,1,1⟩] := by rw [hab1.1, hab1.2]
+        rw [e]
+        exact single_sufficiency_kkk 1 (by omega)
+    · by_cases hc2 : c = 2
+      · subst hc2
+        by_cases ha1 : a = 1
+        · subst ha1
+          by_cases hb2e : b = 2
+          · subst hb2e; exact single_sufficiency_122
+          · exact single_sufficiency_1b2 b (by omega)
+        · by_cases ha2e : a = 2
+          · subst ha2e
+            by_cases hb2e : b = 2
+            · subst hb2e; exact single_sufficiency_222
+            · exact single_sufficiency_2b2 b (by omega)
+          · -- 3 ≤ a ≤ b
+            have ha3 : 3 ≤ a := by omega
+            have hb3 : 3 ≤ b := by omega
+            by_cases habe : a = b
+            · subst habe; exact single_sufficiency_c2_aa a ha3
+            · by_cases hae : a % 2 = 0
+              · by_cases hbe : b % 2 = 0
+                · exact single_sufficiency_c2_both_even a b (a/2) (b/2) ha3 hb3
+                    (by omega) (by omega) (by omega) (by omega) (by omega)
+                · exact single_sufficiency_c2_odd_even a b (a/2) ((b-3)/2)
+                    (by omega) (by omega) (by omega)
+              · by_cases hbe : b % 2 = 0
+                · exact suff_swap b a 2 (single_sufficiency_c2_odd_even b a (b/2) ((a-3)/2)
+                    (by omega) (by omega) (by omega))
+                · exact single_sufficiency_c2_both_odd a b ((b-a)/2) ha3 hb3
+                    (by omega) (by omega)
+      · -- c ≥ 3
+        have hc3 : 3 ≤ c := by omega
+        by_cases ha1 : a = 1
+        · subst ha1
+          by_cases hbc : b = c
+          · subst hbc; exact single_sufficiency_1cc_all b (by omega)
+          · exact single_sufficiency_a1 b c hc3 (by omega)
+        · have ha2 : 2 ≤ a := by omega
+          by_cases hbc : b < c
+          · exact single_sufficiency_dpos_full a b c ha2 (by omega) (by omega) hbc hgt
+          · by_cases hac : a < c
+            · exact single_sufficiency_g a b c ha2 (by omega) (by omega) (by omega) hc3
+            · -- both legs ≥ c
+              have hca : c ≤ a := by omega
+              have hcb : c ≤ b := by omega
+              rcases pow_or_scat c hc3 a hca with ⟨p, hp⟩ | hsa
+              · rcases pow_or_scat c hc3 b hcb with ⟨q, hq⟩ | hsb
+                · -- both legs are powers
+                  have hdvda : c ∣ a := ⟨2^p, by rw [hp, Nat.mul_comm]⟩
+                  have hdvdb : c ∣ b := ⟨2^q, by rw [hq, Nat.mul_comm]⟩
+                  by_cases habe : a = b
+                  · by_cases hace : a = c
+                    · have e : ([⟨a,b,c⟩] : Config) = [⟨c,c,c⟩] := by rw [← habe, hace]
+                      rw [e]
+                      exact single_sufficiency_kkk c (by omega)
+                    · have e : ([⟨a,b,c⟩] : Config) = [⟨a,a,c⟩] := by rw [habe]
+                      rw [e]
+                      exact single_sufficiency_aac a c (by omega) hc3 hdvda
+                  · by_cases hbac : b = a + c
+                    · -- forces ⟨c, 2c, c⟩
+                      have h2 : 2^q * c = (2^p + 1) * c := by rw [Nat.add_mul]; omega
+                      have hqp : 2^q = 2^p + 1 :=
+                        Nat.eq_of_mul_eq_mul_right (by omega) h2
+                      obtain ⟨hp0, hq1⟩ := pow2_eq_succ p q hqp
+                      have hae : a = c := by rw [hp, hp0]; simp
+                      have hbe : b = 2 * c := by rw [hq, hq1, Nat.pow_succ, Nat.pow_zero]
+                      have e : ([⟨a,b,c⟩] : Config) = [⟨c, 2*c, c⟩] := by rw [hae, hbe]
+                      rw [e]
+                      exact single_sufficiency_c2c c (by omega)
+                    · -- generic trap
+                      refine single_sufficiency_trap_gen a b c p q hc3 hp hq hca hcb hgt habe
+                        ⟨hbac, ?_, by omega, by omega⟩
+                      intro hcon
+                      have h1 : c ∣ (b - a) := Nat.dvd_sub hdvdb hdvda
+                      have h2 : c ∣ (b - a - c) := Nat.dvd_sub h1 (Nat.dvd_refl c)
+                      rw [show b - a - c = 1 from by omega] at h2
+                      have := Nat.le_of_dvd (by omega) h2
+                      omega
+                · exact single_sufficiency_oneScat a b c ha2 (by omega) hc3 hgt (Or.inr hsb)
+              · exact single_sufficiency_oneScat a b c ha2 (by omega) hc3 hgt (Or.inl hsa)
+
+/-- **THE THEOREM.  Every single false sum `a + b = c` (`a,b,c ≥ 1`) is completely
+    characterized**: for all `s, t ≥ M = H+1`, `[s]` reaches `[t]` (iff `g ∣ t−s`,
+    by `reach_congr`). -/
+theorem single_sufficiency_all (a b c : Nat) (ha : 1 ≤ a) (hb : 1 ≤ b) (hc : 1 ≤ c) :
+    ∀ s t, Mval [⟨a,b,c⟩] ≤ s → Mval [⟨a,b,c⟩] ≤ t →
+      gz [⟨a,b,c⟩] ∣ ((t : Int) - s) → Reach [⟨a,b,c⟩] [s] [t] := by
+  rcases Nat.le_total a b with hab | hba
+  · exact single_sufficiency_all_le a b c ha hab hc
+  · exact suff_swap b a c (single_sufficiency_all_le b a c hb hba hc)
+
+#print axioms YaStupid.single_sufficiency_all
+
+end YaStupid
