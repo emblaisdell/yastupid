@@ -6643,3 +6643,257 @@ theorem climb_1cc (c : Nat) (hc2 : 2 ≤ c) :
 #print axioms YaStupid.climb_1cc
 
 end YaStupid
+
+
+namespace YaStupid
+
+/-- Descend for `⟨1,c,c⟩`, small range `n ∈ [c+2, 2c-2]`: `[n+1] → [n]`.
+    Peel a `c`, scatter the sub-`c` remainder `X = n+1-c` to ones, false-merge `{1,c}→c`,
+    rebuild `[X-1]` (safe, `<c`) and merge onto `c` (safe, `X-1 ≥ 2`). -/
+theorem descend_1cc_S (c : Nat) (hc3 : 3 ≤ c) :
+    ∀ n, c + 2 ≤ n → n ≤ 2 * c - 2 → Reach [⟨1,c,c⟩] [n + 1] [n] := by
+  intro n hn1 hn2
+  have hpe := peelc_1cc c (by omega) (n + 1) (by omega)
+  have hXc : n + 1 - c < c := by omega
+  have hX3 : 3 ≤ n + 1 - c := by omega
+  -- scatter the remainder to ones (kept behind the c)
+  have hsc : Reach [⟨1,c,c⟩] [c, n + 1 - c] (c :: List.replicate (n + 1 - c) 1) := by
+    have := reach_frame_left [c] (scatterClean 1 c c (n + 1 - c) (by omega) hXc); simpa using this
+  -- false-merge one {1,c} → c  (c :: 1^X → c :: 1^(X-1))
+  have hrep : List.replicate (n + 1 - c) 1 = 1 :: List.replicate (n + 1 - c - 1) 1 := repl_pull _ (by omega)
+  have hfm : Reach [⟨1,c,c⟩] (c :: List.replicate (n + 1 - c) 1) (c :: List.replicate (n + 1 - c - 1) 1) := by
+    rw [hrep]
+    -- state c :: 1 :: 1^(X-1); fmerge {1,c} → c leaving c :: 1^(X-1)
+    refine reach_move (List.replicate (n + 1 - c - 1) 1) (Local.fmerge ⟨1,c,c⟩ (List.mem_singleton.2 rfl))
+      (by rw [List.perm_iff_count]; intro x; simp [List.count_cons] <;> omega) ?_
+    -- aout = [c], so [c] ++ 1^(X-1) = c :: 1^(X-1)
+    simpa using Reach.refl (c :: List.replicate (n + 1 - c - 1) 1)
+  -- rebuild [X-1] from the ones (safe, X-1 < c)
+  have hg : Reach [⟨1,c,c⟩] (List.replicate (n + 1 - c - 1) 1) [n + 1 - c - 1] :=
+    gather 1 c c (n + 1 - c - 1) (by omega) (by omega)
+  have hg2 : Reach [⟨1,c,c⟩] (c :: List.replicate (n + 1 - c - 1) 1) [c, n + 1 - c - 1] := by
+    have := reach_frame_left [c] hg; simpa using this
+  -- merge {c, X-1} → [n]  (safe since X-1 ≥ 2 ≠ 1)
+  have hm : Reach [⟨1,c,c⟩] [c, n + 1 - c - 1] [n] := by
+    have hcc : ∀ f ∈ ([⟨1,c,c⟩] : Config), ¬ ((f.a = c ∧ f.b = n + 1 - c - 1) ∨ (f.a = n + 1 - c - 1 ∧ f.b = c)) := by
+      simp only [List.mem_singleton, forall_eq]; omega
+    have h := reach_move [] (Local.nmerge c (n + 1 - c - 1) hcc) (List.Perm.refl _) (Reach.refl _)
+    rw [show c + (n + 1 - c - 1) = n from by omega] at h
+    exact h
+  exact reach_trans hpe (reach_trans hsc (reach_trans hfm (reach_trans hg2 hm)))
+
+#print axioms YaStupid.descend_1cc_S
+
+end YaStupid
+
+
+namespace YaStupid
+
+/-- **`loseOne`**: in `⟨1,c,c⟩`, `c^K ++ [Y] → [Kc+Y-1]` (lose exactly `1`), whenever
+    `c ∤ Y` (so the peel recursion never bottoms on a bare `c`).  `Y ≥ c+1` peels a `c`
+    and recurses (`K+1`, `Y-c`); `Y < c` scatters `Y` to ones, false-merges one `{1,c}`,
+    and gathers.  The invariant `2 ≤ K ∨ 3 ≤ Y` keeps the final `{c, Y-1}` merge legal. -/
+theorem loseOne (c : Nat) (hc3 : 3 ≤ c) :
+    ∀ Y, 1 ≤ Y → ¬ (c ∣ Y) → ∀ K, 1 ≤ K → (2 ≤ K ∨ 3 ≤ Y) →
+      Reach [⟨1,c,c⟩] (List.replicate K c ++ [Y]) [K * c + Y - 1] := by
+  intro Y
+  induction Y using Nat.strongRecOn with
+  | ind Y ih =>
+    intro hY1 hYnd K hK1 hKY
+    by_cases hYc : Y < c
+    · -- base: scatter Y to ones, false-merge one {1,c}, gather
+      have hsc : Reach [⟨1,c,c⟩] (List.replicate K c ++ [Y]) (List.replicate K c ++ List.replicate Y 1) :=
+        reach_frame_left (List.replicate K c) (scatterClean 1 c c Y hY1 hYc)
+      -- false-merge {1,c}: c^K ++ 1^Y → c^K ++ 1^(Y-1)
+      have hKc : List.replicate K c = c :: List.replicate (K - 1) c := by
+        rw [← List.replicate_succ]; congr 1; omega
+      have hY1' : List.replicate Y 1 = 1 :: List.replicate (Y - 1) 1 := repl_pull Y hY1
+      have hperm : (List.replicate K c ++ List.replicate Y 1).Perm
+          ([1, c] ++ (List.replicate (K - 1) c ++ List.replicate (Y - 1) 1)) := by
+        rw [hKc, hY1']
+        exact (List.Perm.cons c List.perm_middle).trans
+          (List.Perm.swap 1 c (List.replicate (K - 1) c ++ List.replicate (Y - 1) 1))
+      have hfm : Reach [⟨1,c,c⟩] (List.replicate K c ++ List.replicate Y 1)
+          (List.replicate K c ++ List.replicate (Y - 1) 1) := by
+        refine reach_move (List.replicate (K - 1) c ++ List.replicate (Y - 1) 1)
+          (Local.fmerge ⟨1,c,c⟩ (List.mem_singleton.2 rfl)) hperm ?_
+        -- aout = [c]; [c] ++ (c^(K-1) ++ 1^(Y-1)) = c^K ++ 1^(Y-1)
+        have e : [c] ++ (List.replicate (K - 1) c ++ List.replicate (Y - 1) 1)
+            = List.replicate K c ++ List.replicate (Y - 1) 1 := by
+          rw [hKc]; simp
+        rw [e]; exact Reach.refl _
+      -- gather c^K ++ 1^(Y-1) → [Kc + Y - 1]
+      have hgath : Reach [⟨1,c,c⟩] (List.replicate K c ++ List.replicate (Y - 1) 1) [K * c + Y - 1] := by
+        rcases Nat.lt_or_ge K 2 with hK | hK
+        · -- K = 1
+          have hK1e : K = 1 := by omega
+          subst hK1e
+          have hY3 : 3 ≤ Y := by rcases hKY with h | h <;> omega
+          -- [c] ++ 1^(Y-1); build [Y-1] (< c), merge {c, Y-1}
+          have hb : Reach [⟨1,c,c⟩] (List.replicate 1 c ++ List.replicate (Y - 1) 1)
+              (List.replicate 1 c ++ [Y - 1]) :=
+            reach_frame_left (List.replicate 1 c) (gather 1 c c (Y - 1) (by omega) (by omega))
+          have hm : Reach [⟨1,c,c⟩] (List.replicate 1 c ++ [Y - 1]) [1 * c + Y - 1] := by
+            have hcc : ∀ f ∈ ([⟨1,c,c⟩] : Config), ¬ ((f.a = c ∧ f.b = Y - 1) ∨ (f.a = Y - 1 ∧ f.b = c)) := by
+              simp only [List.mem_singleton, forall_eq]; omega
+            have h : Reach [⟨1,c,c⟩] (List.replicate 1 c ++ [Y - 1]) [c + (Y - 1)] :=
+              reach_move [] (Local.nmerge c (Y - 1) hcc)
+                (by rw [List.replicate_one]; exact List.Perm.refl _) (Reach.refl _)
+            rw [show c + (Y - 1) = 1 * c + Y - 1 from by omega] at h
+            exact h
+          exact reach_trans hb hm
+        · -- K ≥ 2: gather c's to [Kc], add ones (safe, Kc > c)
+          have hcs : Reach [⟨1,c,c⟩] (List.replicate K c) [K * c] :=
+            gatherCvalG 1 c c K (by omega) (fun k hk1 _ => by
+              have hkc : c ≤ k * c := Nat.le_mul_of_pos_left c (by omega); omega)
+          have h1 : Reach [⟨1,c,c⟩] (List.replicate K c ++ List.replicate (Y - 1) 1)
+              ([K * c] ++ List.replicate (Y - 1) 1) := reach_frame _ hcs
+          have h2 : Reach [⟨1,c,c⟩] ([K * c] ++ List.replicate (Y - 1) 1) [K * c + (Y - 1)] := by
+            have hlt : c < K * c := by
+              have := (Nat.mul_lt_mul_right (show 0 < c by omega)).mpr (show 1 < K by omega); simpa using this
+            have := mergeUnitsHi 1 c c (Y - 1) (K * c) (by omega)
+            simpa using this
+          rw [show K * c + (Y - 1) = K * c + Y - 1 from by omega] at h2
+          exact reach_trans h1 h2
+      exact reach_trans hsc (reach_trans hfm hgath)
+    · -- Y ≥ c+1 (c ∤ Y ⇒ Y ≠ c): peel a c, recurse
+      have hYc1 : c + 1 ≤ Y := by
+        rcases Nat.lt_or_ge Y c with h | h
+        · omega
+        · rcases Nat.eq_or_lt_of_le h with he | hlt
+          · exact absurd ⟨1, by omega⟩ hYnd
+          · omega
+      have hp := peelc_1cc c (by omega) Y hYc1
+      have hfr : Reach [⟨1,c,c⟩] (List.replicate K c ++ [Y]) (List.replicate (K + 1) c ++ [Y - c]) := by
+        have hfl := reach_frame_left (List.replicate K c) hp
+        have e : List.replicate (K + 1) c ++ [Y - c] = List.replicate K c ++ [c, Y - c] := by
+          rw [List.replicate_succ', List.append_assoc]; rfl
+        rw [e]; exact hfl
+      have hrec := ih (Y - c) (by omega) (by omega) (by
+        intro ⟨m, hm⟩; exact hYnd ⟨m + 1, by rw [Nat.mul_succ]; omega⟩) (K + 1) (by omega) (Or.inl (by omega))
+      rw [show (K + 1) * c + (Y - c) - 1 = K * c + Y - 1 from by rw [Nat.succ_mul]; omega] at hrec
+      exact reach_trans hfr hrec
+
+#print axioms YaStupid.loseOne
+
+end YaStupid
+
+
+namespace YaStupid
+
+/-- Descend for `⟨1,c,c⟩` when `c ∤ n+1`: peel one `c`, `loseOne` the rest. -/
+theorem descend_1cc_nondvd (c : Nat) (hc3 : 3 ≤ c) :
+    ∀ n, c + 2 ≤ n → ¬ (c ∣ (n + 1)) → Reach [⟨1,c,c⟩] [n + 1] [n] := by
+  intro n hn hnd
+  have hp := peelc_1cc c (by omega) (n + 1) (by omega)
+  have e1 : ([c, n + 1 - c] : List Nat) = List.replicate 1 c ++ [n + 1 - c] := by
+    rw [List.replicate_one]; rfl
+  rw [e1] at hp
+  have hlo := loseOne c hc3 (n + 1 - c) (by omega)
+    (by intro ⟨m, hm⟩; exact hnd ⟨m + 1, by rw [Nat.mul_succ]; omega⟩)
+    1 (by omega) (Or.inr (by omega))
+  rw [show 1 * c + (n + 1 - c) - 1 = n from by omega] at hlo
+  exact reach_trans hp hlo
+
+/-- Descend for `⟨1,c,c⟩` when `c ∣ n+1` (`c ≥ 3`): climb `+1` (so the total is
+    `≡ 1 mod c`), peel down to `c^(K-1) ++ [c+1]`, scatter the `c+1` to ones
+    (`getUnits`), false-merge `{1,c}` **twice**, regather. -/
+theorem descend_1cc_dvd (c : Nat) (hc3 : 3 ≤ c) :
+    ∀ n, c + 2 ≤ n → (c ∣ (n + 1)) → Reach [⟨1,c,c⟩] [n + 1] [n] := by
+  intro n hn hdvd
+  obtain ⟨K, hK⟩ := hdvd
+  have hn1 : n + 1 = K * c := by rw [hK, Nat.mul_comm]
+  have hK2 : 2 ≤ K := by
+    rcases K with _ | _ | K
+    · omega
+    · omega
+    · omega
+  have hsm : (K - 1) * c + c = K * c := by rw [← Nat.succ_mul]; congr 1; omega
+  -- climb: [n+1] → [n+2]
+  have hcl := climb_1cc c (by omega) (n + 1) (by omega)
+  rw [show n + 1 + (1 + c - c) = n + 2 from by omega] at hcl
+  -- peel K-1 copies: [n+2] → c^(K-1) ++ [c+1]
+  have hpe := peelcManyG 1 c c (peelc_1cc c (by omega)) (K - 1) (n + 2) (by omega)
+  rw [show n + 2 - (K - 1) * c = c + 1 from by omega] at hpe
+  -- scatter [c+1] to ones behind the c's
+  have hsc : Reach [⟨1,c,c⟩] (List.replicate (K - 1) c ++ [c + 1])
+      (List.replicate (K - 1) c ++ List.replicate (c + 1) 1) :=
+    reach_frame_left _ (getUnits 1 c c (c + 1) (by omega) (by omega))
+  -- two false merges {1,c} → c : lose 2 ones
+  have hKc : List.replicate (K - 1) c = c :: List.replicate (K - 2) c := by
+    rw [← List.replicate_succ]; congr 1; omega
+  have fm : ∀ Y, 1 ≤ Y → Reach [⟨1,c,c⟩]
+      (List.replicate (K - 1) c ++ List.replicate Y 1)
+      (List.replicate (K - 1) c ++ List.replicate (Y - 1) 1) := by
+    intro Y hY1
+    have hYp : List.replicate Y 1 = 1 :: List.replicate (Y - 1) 1 := repl_pull Y hY1
+    have hperm : (List.replicate (K - 1) c ++ List.replicate Y 1).Perm
+        ([1, c] ++ (List.replicate (K - 2) c ++ List.replicate (Y - 1) 1)) := by
+      rw [hKc, hYp]
+      exact (List.Perm.cons c List.perm_middle).trans
+        (List.Perm.swap 1 c (List.replicate (K - 2) c ++ List.replicate (Y - 1) 1))
+    refine reach_move (List.replicate (K - 2) c ++ List.replicate (Y - 1) 1)
+      (Local.fmerge ⟨1,c,c⟩ (List.mem_singleton.2 rfl)) hperm ?_
+    have e : [c] ++ (List.replicate (K - 2) c ++ List.replicate (Y - 1) 1)
+        = List.replicate (K - 1) c ++ List.replicate (Y - 1) 1 := by
+      rw [hKc]; simp
+    rw [e]; exact Reach.refl _
+  have fm1 := fm (c + 1) (by omega)
+  have fm2 := fm c (by omega)
+  rw [show c + 1 - 1 = c from by omega] at fm1
+  -- gather: ones → [c-1], c's → [(K-1)c], merge
+  have hg1 : Reach [⟨1,c,c⟩] (List.replicate (K - 1) c ++ List.replicate (c - 1) 1)
+      (List.replicate (K - 1) c ++ [c - 1]) :=
+    reach_frame_left _ (gather 1 c c (c - 1) (by omega) (by omega))
+  have hg2 : Reach [⟨1,c,c⟩] (List.replicate (K - 1) c ++ [c - 1]) ([(K - 1) * c] ++ [c - 1]) :=
+    reach_frame _ (gatherCvalG 1 c c (K - 1) (by omega) (fun k hk1 _ => by
+      have hkc : c ≤ k * c := Nat.le_mul_of_pos_left c (by omega); omega))
+  have hm : Reach [⟨1,c,c⟩] ([(K - 1) * c] ++ [c - 1]) [n] := by
+    have hcc : ∀ f ∈ ([⟨1,c,c⟩] : Config),
+        ¬ ((f.a = (K - 1) * c ∧ f.b = c - 1) ∨ (f.a = c - 1 ∧ f.b = (K - 1) * c)) := by
+      simp only [List.mem_singleton, forall_eq]
+      have hkc : c ≤ (K - 1) * c := Nat.le_mul_of_pos_left c (by omega)
+      omega
+    have h : Reach [⟨1,c,c⟩] [(K - 1) * c, c - 1] [(K - 1) * c + (c - 1)] :=
+      reach_move [] (Local.nmerge ((K - 1) * c) (c - 1) hcc) (List.Perm.refl _) (Reach.refl _)
+    rw [show (K - 1) * c + (c - 1) = n from by omega] at h
+    exact h
+  exact reach_trans hcl (reach_trans hpe (reach_trans hsc (reach_trans fm1
+    (reach_trans fm2 (reach_trans hg1 (reach_trans hg2 hm))))))
+
+/-- **Full sufficiency for the doubly-degenerate trap `⟨1,c,c⟩`** (`c ≥ 3`): every
+    `s,t ≥ M = c+2` are interreachable (`g = 1`). -/
+theorem single_sufficiency_1cc (c : Nat) (hc3 : 3 ≤ c) :
+    ∀ s t, Mval [⟨1,c,c⟩] ≤ s → Mval [⟨1,c,c⟩] ≤ t →
+      gz [⟨1,c,c⟩] ∣ ((t : Int) - s) → Reach [⟨1,c,c⟩] [s] [t] := by
+  have hg : gnat [⟨1,c,c⟩] = 1 := by rw [gnat_dpos 1 c c (by omega)]; omega
+  have hM : Mval [⟨1,c,c⟩] = c + 2 := by
+    show Hnat [⟨1,c,c⟩] + 1 = c + 2; rw [Hnat_dpos 1 c c (by omega)]; omega
+  have climb : ∀ n, Mval [⟨1,c,c⟩] ≤ n → Reach [⟨1,c,c⟩] [n] [n + gnat [⟨1,c,c⟩]] := by
+    intro n hn; rw [hg, hM] at *
+    have := climb_1cc c (by omega) n (by omega)
+    rwa [show n + (1 + c - c) = n + 1 from by omega] at this
+  have descend : ∀ n, Mval [⟨1,c,c⟩] ≤ n → Reach [⟨1,c,c⟩] [n + gnat [⟨1,c,c⟩]] [n] := by
+    intro n hn; rw [hg, hM] at *
+    by_cases hdvd : c ∣ (n + 1)
+    · exact descend_1cc_dvd c hc3 n (by omega) hdvd
+    · exact descend_1cc_nondvd c hc3 n (by omega) hdvd
+  intro s t hs ht hg'
+  exact sufficiency_of_pumps climb descend hs ht hg'
+
+/-- The doubly-degenerate lie `1 + 3 = 3` is solvable above `M = 5`. -/
+theorem solvable_1_3_3 {s t : Nat} (hs : 5 ≤ s) (ht : 5 ≤ t) : Reach [⟨1,3,3⟩] [s] [t] := by
+  refine single_sufficiency_1cc 3 (by omega) s t ?_ ?_ ?_
+  · have : Mval [⟨1,3,3⟩] = 5 := by decide
+    omega
+  · have : Mval [⟨1,3,3⟩] = 5 := by decide
+    omega
+  · have : gz [⟨1,3,3⟩] = 1 := by decide
+    rw [this]; exact Int.one_dvd _
+
+#print axioms YaStupid.descend_1cc_nondvd
+#print axioms YaStupid.descend_1cc_dvd
+#print axioms YaStupid.single_sufficiency_1cc
+#print axioms YaStupid.solvable_1_3_3
+
+end YaStupid
